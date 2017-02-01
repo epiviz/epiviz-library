@@ -6,6 +6,19 @@ Epiviz is a scientific information visualization tool for genetic and epigenetic
 For more information, visit - http://epiviz.github.io/
 
 
+To Install
+----------
+
+`npm install --save epiviz/epiviz-library`
+
+
+Usage
+----------
+
+`var epiviz = require('epiviz');`
+
+
+
 To Compile closure
 -------------------
 

@@ -1,0 +1,39 @@
+{
+  "name": "epiviz",
+  "version": "0.0.1",
+  "description": "epiviz javascript library for components and charts",
+  "main": "index.js",
+  "bin": {
+    "epiviz": "epiviz-compiled.js"
+  },
+  "scripts": {
+    "test": "mocha --reporter spec"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/epiviz/epiviz.git"
+  },
+  "keywords": [
+    "epiviz",
+    "charts",
+    "visualizations",
+    "genomics",
+    "epigenetics"
+  ],
+  "author": "Jayaram Kancherla",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/epiviz/epiviz/issues"
+  },
+  "homepage": "https://github.com/epiviz/epiviz#readme",
+  "devDependencies": {
+    "chai": "^3.5.0",
+    "mocha": "^3.2.0",
+    "object-keys": "^1.0.11",
+    "typeof": "^1.0.0",
+    "webpack": "^2.2.1"
+  },
+  "dependencies": {
+    "google-closure-compiler-js": "^20170124.0.0"
+  }
+}

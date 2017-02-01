@@ -3,9 +3,6 @@
   "version": "0.0.1",
   "description": "epiviz javascript library for components and charts",
   "main": "index.js",
-  "bin": {
-    "epiviz": "epiviz-compiled.js"
-  },
   "scripts": {
     "test": "mocha --reporter spec"
   },

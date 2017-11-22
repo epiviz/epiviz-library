@@ -155,6 +155,12 @@ epiviz.ui.charts.ChartManager = function(config) {
 
   this._chartIcicleLocationChanges = new epiviz.events.Event();
 
+  this._chartFeatureSearchEvent = new epiviz.events.Event();
+
+  this._chartFeatureGetDataEvent = new epiviz.events.Event();
+
+  this._heatmapAddFeatureChartEvent = new epiviz.events.Event();
+
   this._registerWindowResize();
 };
 
@@ -166,7 +172,7 @@ epiviz.ui.charts.ChartManager = function(config) {
  * @param {epiviz.ui.charts.VisualizationProperties} [chartProperties]
  * @returns {string} The id of the newly created chart
  */
-epiviz.ui.charts.ChartManager.prototype.addChart = function(chartType, visConfigSelection, id, chartProperties) {
+epiviz.ui.charts.ChartManager.prototype.addChart = function(chartType, visConfigSelection, id, chartProperties, chartTitle) {
   id = id || sprintf('%s-%s-%s', chartType.chartDisplayType(), chartType.chartHtmlAttributeName(), epiviz.utils.generatePseudoGUID(5));
   var css = chartType.cssClass();
 
@@ -223,6 +229,15 @@ epiviz.ui.charts.ChartManager.prototype.addChart = function(chartType, visConfig
     chartMarkers
   );
 
+  chartProperties.customSettingsValues.title = "";
+
+  if (chartType.chartDisplayType() == epiviz.ui.charts.VisualizationType.DisplayType.DATA_STRUCTURE) {
+    chartProperties.customSettingsValues.title = visConfigSelection.datasourceGroup;
+  }
+  else if (chartTitle) {
+    // chartProperties.customSettingsValues.title = chartTitle;
+  }
+
   var chart = chartType.createNew(id, container, chartProperties);
   this._charts[id] = chart;
 
@@ -243,6 +258,9 @@ epiviz.ui.charts.ChartManager.prototype.addChart = function(chartType, visConfig
   this._registerChartPropagateHierarchyChanges(chart);
   this._registerChartPropogateIcicleLocationChanges(chart);
   this._registerChartIcicleLocationChanges(chart);
+  this._registerChartSearchFeature(chart);
+  this._registerChartFeatureGetData(chart);
+  this._registerHeatmapAddFeatureChart(chart);
 
   if (chartType.decorations()) {
     /** @type {epiviz.ui.charts.decoration.VisualizationDecoration} */
@@ -264,6 +282,23 @@ epiviz.ui.charts.ChartManager.prototype.addChart = function(chartType, visConfig
 
   if (!(chartType.chartDisplayType() in this._chartsOrder)) { this._chartsOrder[chartType.chartDisplayType()] = []; }
   this._chartsOrder[chartType.chartDisplayType()].push(id);
+
+  var chartKeys = Object.keys(this._charts);
+  var dsExists = false;
+
+  chartKeys.forEach(function(cm) {
+    if(cm.indexOf("data-structure") != -1) {
+      dsExists = true;
+    }
+  });
+  
+  if(dsExists) {
+    $("#data-source-button").hide();
+  }
+  else {
+    $("#data-source-button").show();
+  }
+
 
   this._chartAdded.notify(new epiviz.ui.charts.VisEventArgs(id, {
       type: chartType,
@@ -289,6 +324,22 @@ epiviz.ui.charts.ChartManager.prototype.removeChart = function(id) {
   var chartsContainer = chartsAccordion.find('.vis-container');
   if (chartsContainer.children().length == 0) {
     chartDisplayTypeContainer.empty();
+  }
+
+  var chartKeys = Object.keys(this._charts);
+  var dsExists = false;
+
+  chartKeys.forEach(function(cm) {
+    if(cm.indexOf("data-structure") != -1) {
+      dsExists = true;
+    }
+  });
+  
+  if(dsExists) {
+    $("#data-source-button").hide();
+  }
+  else {
+    $("#data-source-button").show();
   }
 
   this._chartRemoved.notify(new epiviz.ui.charts.VisEventArgs(id, this._chartsOrder));
@@ -698,6 +749,36 @@ epiviz.ui.charts.ChartManager.prototype._registerChartIcicleLocationChanges = fu
         chart._drawAxes(chart._lastRoot);
       }
    }));
+}; 
+
+epiviz.ui.charts.ChartManager.prototype._registerChartSearchFeature = function(chart) {
+  var self = this;
+
+  if (chart._featureType == 'featureScatterPlot') {
+    chart._searchFeatureChart.addListener(new epiviz.events.EventListener(function(e) {
+      self._chartFeatureSearchEvent.notify(e);
+    }));
+  }
+}; 
+
+epiviz.ui.charts.ChartManager.prototype._registerHeatmapAddFeatureChart = function(chart) {
+  var self = this;
+
+  if (chart._featureType == 'heatmapPlot') {
+    chart._addFeaturePlot.addListener(new epiviz.events.EventListener(function(e) {
+      self._heatmapAddFeatureChartEvent.notify(e);
+    }));
+  }
+}; 
+
+epiviz.ui.charts.ChartManager.prototype._registerChartFeatureGetData = function(chart) {
+  var self = this;
+
+  if (chart._featureType == 'featureScatterPlot') {
+    chart._registerFeatureGetData.addListener(new epiviz.events.EventListener(function(e) {
+      self._chartFeatureGetDataEvent.notify(e);
+    }));
+  }
 }; 
 
 epiviz.ui.charts.ChartManager.prototype.getChartSettings = function(id) {

@@ -11,6 +11,8 @@ epiviz.Config.SETTINGS = {
 
   configType: 'default',
 
+  appTitle: location.hostname == "metaviz.cbcb.umd.edu" ? 'UMD Metagenome Browser' : 'Metaviz',
+
   // Navigation settings
 
   zoominRatio: 0.8,
@@ -29,7 +31,7 @@ epiviz.Config.SETTINGS = {
   workspacesDataProvider: sprintf('epiviz.data.EmptyResponseDataProvider', 'empty', ''), //TODO: Fill in (in site-settings.js)
 
   // For datasources with hierarchies, the cache must be disabled (Epiviz will crash otherwise)
-  useCache: true,
+  useCache: false,
 
   // Every n milliseconds, the cache will free up any data associated with parts of the genome not recently visited
   cacheUpdateIntervalMilliseconds: 30000,
@@ -39,17 +41,14 @@ epiviz.Config.SETTINGS = {
 
   // Epiviz will only be able to show any of the charts in this list; if it's not registered here, you will not see it in the UI
   chartTypes: [
-    'epiviz.plugins.charts.BlocksTrackType',
-    'epiviz.plugins.charts.LineTrackType',
-    'epiviz.plugins.charts.StackedLineTrackType',
     'epiviz.plugins.charts.ScatterPlotType',
-    'epiviz.plugins.charts.GenesTrackType',
     'epiviz.plugins.charts.HeatmapPlotType',
     'epiviz.plugins.charts.LinePlotType',
     'epiviz.plugins.charts.StackedLinePlotType',
     'epiviz.ui.charts.tree.IcicleType',
-    'epiviz.plugins.charts.CustomScatterPlotType',
-    'epiviz.plugins.charts.DiversityScatterPlotType'
+    'epiviz.plugins.charts.PCAScatterPlotType',
+    'epiviz.plugins.charts.DiversityScatterPlotType',
+    'epiviz.plugins.charts.FeatureScatterPlotType'
   ],
 
   // Chart default settings
@@ -97,7 +96,7 @@ epiviz.Config.SETTINGS = {
     'data-structure': {
       width: 800,
       height: 350,
-      margins: new epiviz.ui.charts.Margins(50, 10, 10, 10),
+      margins: new epiviz.ui.charts.Margins(55, 10, 10, 10),
       colors: 'd3-category20',
       decorations: [
         'epiviz.ui.charts.tree.decoration.TogglePropagateSelectionButton',
@@ -132,7 +131,7 @@ epiviz.Config.SETTINGS = {
     'epiviz.plugins.charts.HeatmapPlot': {
       width: 800,
       height: 400,
-      margins: new epiviz.ui.charts.Margins(80, 120, 40, 40),
+      margins: new epiviz.ui.charts.Margins(120, 60, 20, 40),
       decorations: [
         'epiviz.ui.charts.decoration.ChartGroupByMeasurementsCodeButton',
         'epiviz.ui.charts.decoration.ChartOrderByMeasurementsCodeButton',
@@ -163,7 +162,25 @@ epiviz.Config.SETTINGS = {
         'epiviz.ui.charts.decoration.ChartOrderByMeasurementsCodeButton'
       ],
       colors: 'd3-category20b'
-    }
+    },
+    'epiviz.plugins.charts.PCAScatterPlot': {
+      margins: new epiviz.ui.charts.Margins(25, 55, 50, 15),
+      decorations: [
+        'epiviz.ui.charts.decoration.ChartColorByRowCodeButton'
+      ]
+     },
+    'epiviz.plugins.charts.DiversityScatterPlot': {
+      margins: new epiviz.ui.charts.Margins(25, 55, 50, 15),
+      decorations: [
+        'epiviz.ui.charts.decoration.ChartColorByRowCodeButton'
+      ]
+     },
+    'epiviz.plugins.charts.FeatureScatterPlot': {
+      margins: new epiviz.ui.charts.Margins(50, 55, 50, 15),
+      decorations: [
+        'epiviz.ui.charts.decoration.ChartColorByRowCodeButton'
+      ]
+     }
   },
 
   chartCustomSettings: {
@@ -192,6 +209,20 @@ epiviz.Config.SETTINGS = {
     },
     'epiviz.plugins.charts.StackedLinePlot': {
       colLabel: 'label'
+    },
+    'epiviz.plugins.charts.PCAScatterPlot': {
+      xMin: -2,
+      xMax: 2,
+      yMin: -2,
+      yMax: 2
+    },
+    'epiviz.plugins.charts.DiversityScatterPlot': {
+      yMin: 0,
+      yMax: 6
+    },
+    'epiviz.plugins.charts.FeatureScatterPlot': {
+      yMin: 0,
+      yMax: 6
     }
   },
 
@@ -201,43 +232,17 @@ epiviz.Config.SETTINGS = {
     content: {
       // This is the selected chromosome, start and end locations
       range: {
-        seqName: 'chr11',
-        start: 101407173,
-        width: 103922435
+        seqName: '',
+        start: 0,
+        width: 100000
       },
 
       // The initial measurements loaded in the workspace
-      measurements: [
-        {
-          id: 'genes',
-          name: 'Genes',
-          type: 'range',
-          datasourceId: 'genes',
-          datasourceGroup: 'genes',
-          dataprovider: epiviz.Config.DEFAULT_DATA_PROVIDER_ID,
-          formula: null,
-          defaultChartType: 'Genes Track',
-          annotation: null,
-          minValue: null,
-          maxValue: null,
-          metadata: ['gene', 'entrez', 'exon_starts', 'exon_ends']
-        }
-      ],
+      measurements: [],
 
       // The initial charts on the initial workspace
       charts: {
-        track: [
-          {
-            id: 'track-genes-initial',
-            type: 'epiviz.plugins.charts.GenesTrack',
-            properties: { width: 837, height: 120,
-              margins: { top: 25, left: 20, bottom: 23, right: 10 },
-              measurements: [0],
-              colors: { id: 'genes-default' },
-              customSettings: {}
-            }
-          }
-        ],
+        track: [],
         plot: []
       }
     }
@@ -282,7 +287,8 @@ epiviz.Config.SETTINGS = {
       ['#f9a65a', '#599ad3', '#79c36a', '#f1595f', '#727272', '#cd7058', '#d77fb3'],
       'Genes Default', 'genes-default'),
     new epiviz.ui.charts.ColorPalette(
-      ['#1859a9', '#ed2d2e', '#008c47', '#010101', '#f37d22', '#662c91', '#a11d20', '#b33893'],
+      //['#1859a9', '#ed2d2e', '#008c47', '#010101', '#f37d22', '#662c91', '#a11d20', '#b33893'],
+      ['#1859a9', '#ff7f0e', '#2ca02c', '#010101', '#f37d22', '#662c91', '#a11d20', '#b33893'],
       'Heatmap Default', 'heatmap-default'),
     new epiviz.ui.charts.ColorPalette(
       ["#ffffd9","#edf8b1","#c7e9b4","#7fcdbb","#41b6c4","#1d91c0","#225ea8","#253494","#081d58"],

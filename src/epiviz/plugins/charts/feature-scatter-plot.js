@@ -4,18 +4,7 @@
  * Time: 11:55 PM
  */
 
-goog.provide('epiviz.plugins.charts.DiversityScatterPlot');
-
-goog.require('epiviz.ui.charts.Plot');
-goog.require('epiviz.ui.charts.Axis');
-goog.require('epiviz.ui.charts.VisEventArgs');
-goog.require('epiviz.ui.charts.Visualization');
-goog.require('epiviz.utils');
-goog.require('epiviz.measurements.Measurement');
-goog.require('epiviz.ui.charts.CustomSetting');
-goog.require('epiviz.ui.charts.ChartIndexObject');
-goog.require('epiviz.deferred.Deferred');
-
+goog.provide('epiviz.plugins.charts.FeatureScatterPlot');
 
 /**
  * @param {string} id
@@ -24,7 +13,7 @@ goog.require('epiviz.deferred.Deferred');
  * @extends {epiviz.ui.charts.Plot}
  * @constructor
  */
-epiviz.plugins.charts.DiversityScatterPlot = function(id, container, properties) {
+epiviz.plugins.charts.FeatureScatterPlot = function(id, container, properties) {
     // Call superclass constructor
     epiviz.ui.charts.Plot.call(this, id, container, properties);
 
@@ -88,19 +77,29 @@ epiviz.plugins.charts.DiversityScatterPlot = function(id, container, properties)
      */
     this._colorLabels = [];
 
+    /**
+     * @type {epiviz.events.Event.<{searchTerm: string, callback: function(Array.<{probe: string, gene: string, seqName: string, start: number, end: number}>)}>}
+     * @private
+     */
+    this._searchFeatureChart = new epiviz.events.Event();
+
+    this._registerFeatureGetData = new epiviz.events.Event();
+
+    this._featureType = "featureScatterPlot";
+
     this._initialize();
 };
 
 /*
  * Copy methods from upper class
  */
-epiviz.plugins.charts.DiversityScatterPlot.prototype = epiviz.utils.mapCopy(epiviz.ui.charts.Plot.prototype);
-epiviz.plugins.charts.DiversityScatterPlot.constructor = epiviz.plugins.charts.DiversityScatterPlot;
+epiviz.plugins.charts.FeatureScatterPlot.prototype = epiviz.utils.mapCopy(epiviz.ui.charts.Plot.prototype);
+epiviz.plugins.charts.FeatureScatterPlot.constructor = epiviz.plugins.charts.FeatureScatterPlot;
 
 /**
  * @protected
  */
-epiviz.plugins.charts.DiversityScatterPlot.prototype._initialize = function() {
+epiviz.plugins.charts.FeatureScatterPlot.prototype._initialize = function() {
     // Call super
     epiviz.ui.charts.Plot.prototype._initialize.call(this);
 
@@ -108,6 +107,11 @@ epiviz.plugins.charts.DiversityScatterPlot.prototype._initialize = function() {
 
     this._chartContent = this._svg.append('g').attr('class', 'chart-content');
     this._legend = this._svg.append('g').attr('class', 'chart-legend');
+
+    var featureName = this.customSettingsValues()[epiviz.plugins.charts.FeatureScatterPlotType.CustomSettings.FEATURE_NAME];
+    var featureId = this.customSettingsValues()[epiviz.plugins.charts.FeatureScatterPlotType.CustomSettings.FEATURE_ID];
+
+    this._drawNavigation(featureName, featureId);
 };
 
 /**
@@ -116,14 +120,16 @@ epiviz.plugins.charts.DiversityScatterPlot.prototype._initialize = function() {
  * @returns {Array.<epiviz.ui.charts.ChartObject>} The objects drawn
  */
 
-epiviz.plugins.charts.DiversityScatterPlot.prototype.draw = function() {
+epiviz.plugins.charts.FeatureScatterPlot.prototype.draw = function() {
     epiviz.ui.charts.Plot.prototype.draw.call(this, undefined, undefined);
     var self = this;
 
-    return self.drawScatter(self._lastRange, self._lastData.data, "sample_id", self._xLabel, "alphaDiversity");
+    var sBox = $('#search-box-' + self.id());
+    sBox.val(self.customSettingsValues()['featureName']);
+    return self.drawScatter(self._lastRange, self._lastData.data, "sample_id", self._xLabel, "count");
 };
 
-epiviz.plugins.charts.DiversityScatterPlot.prototype.drawScatter = function(range, data, key, dimx, dimy) {
+epiviz.plugins.charts.FeatureScatterPlot.prototype.drawScatter = function(range, data, key, dimx, dimy) {
 
     this.xTag = this.customSettingsValues()[epiviz.ui.charts.Visualization.CustomSettings.ROW_LABEL];
 
@@ -138,15 +144,111 @@ epiviz.plugins.charts.DiversityScatterPlot.prototype.drawScatter = function(rang
 };
 
 /**
+ * @private
+ */
+epiviz.plugins.charts.FeatureScatterPlot.prototype._drawNavigation = function(fName, fId) {
+
+    var self = this;
+
+    $('#' + self.id()).prepend('<div style="position:absolute;"><input id="search-box-' + self.id() + '" class="feature-search-box ui-widget-content ui-corner-all" type="text"/></div>');
+
+    var sBox = $('#search-box-' + self.id());
+    sBox.val(self.customSettingsValues()['featureName']);
+    sBox.watermark('Find a taxonomic feature');
+    self._hoveritem = new epiviz.ui.charts.tree.UiNode(
+        self.customSettingsValues()['featureId'], self.customSettingsValues()['featureName'], [], 
+        null, null,
+        null, 0, null, 
+        null, null, null, 
+        null, null, null, null, null, 
+        null, 0, 100000);
+
+    sBox.on("mouseover", function() {
+        self._hover.notify(new epiviz.ui.charts.VisEventArgs(self.id(), self._hoveritem));
+    });
+
+    sBox.on("mouseout", function() {
+        self._unhover.notify(new epiviz.ui.charts.VisEventArgs(self.id()));
+    });
+
+    sBox.autocomplete({
+        source: function(request, callback) {
+        self._searchFeatureChart.notify({ 
+            searchTerm: request.term, 
+            callback:
+                /**
+                 * @param {Array.<{probe: string, gene: string, seqName: string, start: number, end: number}>} results
+                 */
+                function(results) {
+                    var items = [];
+                    for (var i = 0; i < results.length; ++i) {
+                        items.push({
+                            value: results[i].probe || results[i].gene,
+                            label: results[i].probe || results[i].gene,
+                            html: sprintf('<b>%s</b>, [%s]', results[i].gene, results[i].level),
+                            range: epiviz.datatypes.GenomicRange.fromStartEnd(results[i].seqName, results[i].start, results[i].end),
+                            level: results[i].level || null,
+                            node: results[i].nodeId || null,
+                            nodeStart: results[i].start || null,
+                            nodeEnd: results[i].end || null
+                        });
+                    }
+
+                    callback(items);
+                }
+            });
+        },
+        minLength: 1,
+        select: function(event, ui) {
+            var vals = self.customSettingsValues();
+            vals.featureId = ui.item.node;
+            vals.featureName = ui.item.value;
+            var d = ui.item;
+            self._hoveritem = new epiviz.ui.charts.tree.UiNode(
+                d.node, d.label, [], 
+                null, null,
+                null, 0, null, 
+                null, null, null, 
+                null, null, null, null, null, 
+                null, d.nodeStart, d.nodeEnd);
+
+            // self.setCustomSettingsValues(vals);
+
+                self._registerFeatureGetData.notify({
+                    chartId: self.id(), 
+                    feature: vals.featureId
+                });
+            // var currentLocation = self._locationManager.lastUnfilledLocationChangeRequest() || self._locationManager.currentLocation();
+            // var seqName = ui.item.range.seqName();
+            // var start = ui.item.range.start();
+            // var width = ui.item.range.width();
+            // self._updateSelectedLocation(new epiviz.datatypes.GenomicRange(seqName, start, width));
+        },
+        focus: function(event) {
+            // event.preventDefault();
+        },
+        open: function() {},
+        close: function() {}
+    }).data('autocomplete')._renderItem = function(ul, item) {
+        return $('<li></li>')
+        .data( 'item.autocomplete', item )
+        .append(sprintf('<a>%s</a>', item.html))
+        .appendTo(ul);
+    };
+};
+
+epiviz.plugins.charts.FeatureScatterPlot.prototype.displayTypeName = function() { return 'featureScatterPlot'; };
+
+/**
  * @param {epiviz.datatypes.GenomicRange} range
  * @param {epiviz.datatypes.GenomicData} data
  * @returns {Array.<epiviz.ui.charts.ChartObject>} The objects drawn
  * @private
  */
-epiviz.plugins.charts.DiversityScatterPlot.prototype._drawCircles = function(data, dimx, dimy, key) {
+epiviz.plugins.charts.FeatureScatterPlot.prototype._drawCircles = function(originalData, dimx, dimy, key) {
     var self = this;
     var Axis = epiviz.ui.charts.Axis;
-    var circleRadius = Math.max(1, this.customSettingsValues()[epiviz.plugins.charts.DiversityScatterPlotType.CustomSettings.CIRCLE_RADIUS_RATIO] * Math.min(this.width(), this.height()));
+    var circleRadius = Math.max(1, this.customSettingsValues()[epiviz.plugins.charts.FeatureScatterPlotType.CustomSettings.CIRCLE_RADIUS_RATIO] * Math.min(this.width(), this.height()));
     var gridSquareSize = Math.max(Math.floor(circleRadius), 1);
 
     var margins = this.margins();
@@ -158,44 +260,50 @@ epiviz.plugins.charts.DiversityScatterPlot.prototype._drawCircles = function(dat
     var maxY = this.customSettingsValues()[epiviz.ui.charts.Visualization.CustomSettings.Y_MAX];
     var minX = this.customSettingsValues()[epiviz.ui.charts.Visualization.CustomSettings.X_MIN];
     var maxX = this.customSettingsValues()[epiviz.ui.charts.Visualization.CustomSettings.X_MAX];
+    var showPoints = this.customSettingsValues()[epiviz.plugins.charts.FeatureScatterPlotType.CustomSettings.SHOW_POINTS];
+    var logTransform = this.customSettingsValues()[epiviz.plugins.charts.FeatureScatterPlotType.CustomSettings.LOG_TRANSFORM];
+
+    var data = JSON.parse(JSON.stringify(originalData));
+
+    var allValues = [];
+    var uniqueValues = [];
+    var count= 0;
+    minYdata = 100000; 
+    maxYdata = 0;
+    var plotData = [];
+    data.forEach(function(m){
+        if(logTransform) {
+            m[dimy] = Math.log2(m[dimy] + 1);
+        }
+        allValues.push(m[dimx]);
+
+        if(uniqueValues.indexOf(m[dimx]) == -1) {
+            uniqueValues.push(m[dimx]);
+            plotData[count] = [];
+            plotData[count][0] = count;
+            plotData[count][1] = [];
+            count++;
+        }
+
+        var index = uniqueValues.indexOf(m[dimx]);
+        m._xVal = index+1;
+        if(m[dimy] < minYdata) {
+            minYdata = m[dimy];
+        }
+        if(m[dimy] > maxYdata) {
+            maxYdata = m[dimy];
+        }
+        plotData[index][1].push(m[dimy]);
+
+    });
 
     // if (minX == CustomSetting.DEFAULT) { minX = this._measurementsX[0].minValue(); }
-    if (minY == CustomSetting.DEFAULT) { minY = this._measurementsY[0].minValue(); }
+    if (minY == CustomSetting.DEFAULT) { minY = minYdata - 1;}
     // if (maxX == CustomSetting.DEFAULT) { maxX = this._measurementsX[0].maxValue(); }
-    if (maxY == CustomSetting.DEFAULT) { maxY = this._measurementsY[0].maxValue(); }
-
-    var allValues = []
-    data.forEach(function(m) { allValues.push(m[dimx]);});
-
-    var uniqueValues = [];
-
-    allValues.forEach(function(m) {
-        if(uniqueValues.indexOf(m) == -1) {
-            uniqueValues.push(m);
-        }
-    });
+    if (maxY == CustomSetting.DEFAULT) { maxY = maxYdata + 1;}
 
     this.xTickValues = uniqueValues;
-    data.forEach(function(n) {
-        var index = uniqueValues.indexOf(n[dimx]);
-        n._xVal = index+1;
-    } );
-
-    var count= 0;
-    var plotData = [];
-    uniqueValues.forEach(function(m) {
-        plotData[count] = [];
-        plotData[count][0] = count;
-        plotData[count][1] = [];
-        count++;
-    });
-
-    data.forEach(function(d) {
-        var ind = uniqueValues.indexOf(d[dimx]);
-
-        plotData[ind][1].push(d[dimy]);
-    });
-
+    
     if (minX == CustomSetting.DEFAULT) {
         minX = 0;
     }
@@ -218,11 +326,13 @@ epiviz.plugins.charts.DiversityScatterPlot.prototype._drawCircles = function(dat
     var grid = {};
     var items = [];
     var maxGroupItems = 1;
+    
     var seriesIndex = 0; // Assume only 1 pair of datax and datay
     for (var i = 0; i < data.length; ++i) {
 
         var cellX = data[i]["_xVal"];
         var cellY = data[i][dimy];
+        
         if (!cellX || !cellY) {
             continue;
         }
@@ -274,6 +384,7 @@ epiviz.plugins.charts.DiversityScatterPlot.prototype._drawCircles = function(dat
         selectedGroup.append('g').attr('class', 'hovered');
     }
 
+    itemsGroup.selectAll('circle').remove();
     var selection = itemsGroup.selectAll('circle').data(items, function(d) {
         return d.id;
     });
@@ -287,23 +398,23 @@ epiviz.plugins.charts.DiversityScatterPlot.prototype._drawCircles = function(dat
         .style('opacity', 0)
         .style('fill-opacity', 0)
         .attr('r', 0);
-    selection
-        .each(
+
+    if(showPoints) {
+        selection.each(
             /**
              * @param {epiviz.ui.charts.ChartObject} d
              */
             function(d) {
                 var circle = d3.select(this);
-
                 var fill = self.colors().get(d.seriesIndex);
-
                 circle
                     .attr('cx', margins.left() + (d.values[0] - minX) * (width - margins.sumAxis(Axis.X)) / (maxX - minX))
                     .attr('cy', height - margins.bottom() - ((d.values[1] - minY) * (height - margins.sumAxis(Axis.Y)) / (maxY - minY)))
                     .attr('class', d.cssClasses)
                     .style('fill', fill);
-            });
-
+            }
+        );
+    }        
 
     selection
         .transition()
@@ -397,53 +508,63 @@ epiviz.plugins.charts.DiversityScatterPlot.prototype._drawCircles = function(dat
 
         this._colorLabels = colors;
     }
-
+    
     var rectBox = itemsGroup;
 
     rectBox.selectAll('.iqr-range').remove();
     rectBox.selectAll('.whisker').remove();
+
+    function quartiles(d) {
+        d.sort(d3.ascending);
+        var q1 = d3.quantile(d, .25);
+        var q2 = d3.quantile(d, .5);
+        var q3 = d3.quantile(d, .75);
+        return [q1, q2, q3];
+    };
+
     for(i = 0; i < plotData.length; i++){
         var findIQR = plotData[i][1];
-        var lower_upper = [];
-        lower_upper = quartiles(findIQR);
+        var lower_median_upper = [];
+        lower_median_upper = quartiles(findIQR);
+        findIQR = findIQR.sort(d3.ascending);
         
-        var iqr_result = lower_upper[1] - lower_upper[0];
+        var iqr_result = lower_median_upper[2] - lower_median_upper[0];
         var iqr_15 = iqr_result * 1.5;
 
         var whisker_lower_index = 0;
         var whisker_upper_index = findIQR.length-1;
+        var bottom_whisker_bound = lower_median_upper[0] - iqr_15;
+        var upper_whisker_bound = lower_median_upper[2] + iqr_15;
+
         for(j = 0; j < findIQR.length; j++){
-            if(findIQR[j] < lower_upper[0] - iqr_15) {
-                whisker_lower_index = j;
-            }
-            else {
+            whisker_lower_index = j;
+            if(findIQR[j] > bottom_whisker_bound) {
                 break;
             }
         }
         for(k = findIQR.length-1; k > 0; k--){
-            if(findIQR[k] > (lower_upper[1] + iqr_15)) {
-                whisker_upper_index = k;
-            }
-            else {
+            whisker_upper_index = k;
+            if(findIQR[k] < upper_whisker_bound) {
                 break;
             }
         }
+     
     rectBox.append("rect")
     .attr('id', "0")
     .attr('class', 'iqr-range')
     .style('opacity', 1)
     .style('fill-opacity', 0.2)
     .attr('x', margins.left() + (0.6 + plotData[i][0] - minX) * (width - margins.sumAxis(Axis.X)) / (maxX - minX))
-    .attr('y', height - margins.bottom() - ((lower_upper[1] - minY) * (height - margins.sumAxis(Axis.Y)) / (maxY - minY)))
+    .attr('y', height - margins.bottom() - ((lower_median_upper[2] - minY) * (height - margins.sumAxis(Axis.Y)) / (maxY - minY)))
     .attr('width', xScale(.8))
-    .attr('height', Math.abs((yScale(lower_upper[1])-yScale(lower_upper[0]))))
+    .attr('height', Math.abs((yScale(lower_median_upper[2])-yScale(lower_median_upper[0]))))
     .attr('fill', '#1E90FF');
 
      rectBox.append("line")
     .style("stroke", "gray")
     .attr('class', 'whisker')
     .attr("x1", margins.left() + (1 + plotData[i][0] - minX) * (width - margins.sumAxis(Axis.X)) / (maxX - minX))
-    .attr('y1', height - margins.bottom() - ((lower_upper[1] - minY) * (height - margins.sumAxis(Axis.Y)) / (maxY - minY)))
+    .attr('y1', height - margins.bottom() - ((lower_median_upper[2] - minY) * (height - margins.sumAxis(Axis.Y)) / (maxY - minY)))
     .attr("x2", margins.left() + (1 + plotData[i][0] - minX) * (width - margins.sumAxis(Axis.X)) / (maxX - minX))
     .attr('y2', (height - margins.bottom() - ((findIQR[whisker_upper_index] - minY) * (height - margins.sumAxis(Axis.Y)) / (maxY - minY))));
 
@@ -451,7 +572,7 @@ epiviz.plugins.charts.DiversityScatterPlot.prototype._drawCircles = function(dat
     .style("stroke", "gray")
     .attr('class', 'whisker')
     .attr("x1", margins.left() + (1 + plotData[i][0] - minX) * (width - margins.sumAxis(Axis.X)) / (maxX - minX))
-    .attr('y1', height - margins.bottom() - ((lower_upper[0] - minY) * (height - margins.sumAxis(Axis.Y)) / (maxY - minY)))
+    .attr('y1', height - margins.bottom() - ((lower_median_upper[0] - minY) * (height - margins.sumAxis(Axis.Y)) / (maxY - minY)))
     .attr("x2", margins.left() + (1 + plotData[i][0] - minX) * (width - margins.sumAxis(Axis.X)) / (maxX - minX))
     .attr('y2', (height - margins.bottom() - ((findIQR[whisker_lower_index] - minY) * (height - margins.sumAxis(Axis.Y)) / (maxY - minY))));
 
@@ -471,14 +592,39 @@ epiviz.plugins.charts.DiversityScatterPlot.prototype._drawCircles = function(dat
     .attr("x2", margins.left() + (1.4 + plotData[i][0] - minX) * (width - margins.sumAxis(Axis.X)) / (maxX - minX))
     .attr('y2', (height - margins.bottom() - ((findIQR[whisker_lower_index] - minY) * (height - margins.sumAxis(Axis.Y)) / (maxY - minY))));
 
-}
+    // Add median line
+    rectBox.append("line")
+    .style("stroke", "gray")
+    .attr('class', 'whisker')
+    .attr("x1", margins.left() + (0.6 + plotData[i][0] - minX) * (width - margins.sumAxis(Axis.X)) / (maxX - minX))
+    .attr('y1', height - margins.bottom() - ((lower_median_upper[1] - minY) * (height - margins.sumAxis(Axis.Y)) / (maxY - minY)))
+    .attr("x2", margins.left() + (1.4 + plotData[i][0] - minX) * (width - margins.sumAxis(Axis.X)) / (maxX - minX))
+    .attr('y2', (height - margins.bottom() - ((lower_median_upper[1] - minY) * (height - margins.sumAxis(Axis.Y)) / (maxY - minY))));
 
-    function quartiles(d) {
-        d.sort(d3.ascending);
-        var q1 = d3.quantile(d, .25);
-        var q3 = d3.quantile(d, .75);
-        return [q1, q3];
-    };
+    if(showPoints){
+         var selectionOutliers = itemsGroup.selectAll('circle').data(items, function(d) {
+            return d.id;
+         });
+
+        selectionOutliers
+        .each(
+            /**
+             * @param {epiviz.ui.charts.ChartObject} d
+             */
+            function(d) {
+                var circle = d3.select(this);
+
+                var fill = self.colors().get(d.seriesIndex);
+                if (d.values[1] < (findIQR[whisker_lower_index] - minY) || d.values[1] > (findIQR[whisker_upper_index] - minY)){
+                    circle
+                        .attr('cx', margins.left() + (d.values[0] - minX) * (width - margins.sumAxis(Axis.X)) / (maxX - minX))
+                        .attr('cy', height - margins.bottom() - ((d.values[1] - minY) * (height - margins.sumAxis(Axis.Y)) / (maxY - minY)))
+                        .attr('class', d.cssClasses)
+                        .style('fill', fill);
+                }
+            });
+        }
+    }
 
     return items;
 };
@@ -486,11 +632,11 @@ epiviz.plugins.charts.DiversityScatterPlot.prototype._drawCircles = function(dat
 /**
  * @returns {Array.<{name: string, color: string}>}
  */
-epiviz.plugins.charts.DiversityScatterPlot.prototype.colorLabels = function() {
+epiviz.plugins.charts.FeatureScatterPlot.prototype.colorLabels = function() {
     return this._colorLabels;
 };
 
-epiviz.plugins.charts.DiversityScatterPlot.prototype.transformData = function(range, data) {
+epiviz.plugins.charts.FeatureScatterPlot.prototype.transformData = function(range, data) {
   var lastRange = this._lastRange;
 
   if (range != undefined) {
@@ -505,6 +651,3 @@ epiviz.plugins.charts.DiversityScatterPlot.prototype.transformData = function(ra
   deferred.resolve();
   return deferred;
 };
-
-
-// goog.inherits(epiviz.plugins.charts.DiversityScatterPlot, epiviz.ui.charts.Plot);

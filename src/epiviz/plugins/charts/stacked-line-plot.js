@@ -473,5 +473,3 @@ epiviz.plugins.charts.StackedLinePlot.prototype.doUnhover = function() {
       this._svg.selectAll(".hovered .item")
       .style("opacity", 1);
 };
-
-// goog.inherits(epiviz.plugins.charts.StackedLinePlot, epiviz.ui.charts.Plot);

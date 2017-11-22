@@ -672,5 +672,3 @@ epiviz.data.WebsocketDataProvider.prototype._loadWorkspace = function (request) 
   var response = new epiviz.data.Response(request.id(), result);
   this._sendMessage(JSON.stringify(response.raw()));
 };
-
-// goog.inherits(epiviz.data.WebsocketDataProvider, epiviz.data.DataProvider);

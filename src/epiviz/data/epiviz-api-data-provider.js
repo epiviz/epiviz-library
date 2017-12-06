@@ -181,6 +181,12 @@ epiviz.data.EpivizApiDataProvider.prototype._adaptRequest = function(request) {
       var datasourceGroup = request.get('datasourceGroup') || this._id;
       this._lastRoot = nodeId;
       return new epiviz.data.EpivizApiDataProvider.Request(request.id(), 'hierarchy', {datasource: datasourceGroup, depth: this._maxDepth, nodeId: JSON.stringify(nodeId), selection: JSON.stringify(this._selection), order: JSON.stringify(this._order), selectedLevels: JSON.stringify(this._selectedLevels)});
+    case epiviz.data.Request.Action.GET_HIERARCHY_FILTER:
+      var nodeId = request.get('nodeId') || '';
+      var datasourceGroup = request.get('datasourceGroup') || this._id;
+      this._lastRoot = nodeId;
+      var filter = request.get('filter');
+      return new epiviz.data.EpivizApiDataProvider.Request(request.id(), 'hierarchyFilter', {datasource: datasourceGroup, depth: this._maxDepth, nodeId: JSON.stringify(nodeId), selection: JSON.stringify(this._selection), order: JSON.stringify(this._order), selectedLevels: JSON.stringify(this._selectedLevels), filter: filter});
     case epiviz.data.Request.Action.PROPAGATE_HIERARCHY_CHANGES:
       var datasourceGroup = request.get('datasourceGroup') || this._id;
       var order = request.get('order');

@@ -698,6 +698,41 @@ epiviz.data.DataManager.prototype.getHierarchy = function(chartVisConfigSelectio
   });
 };
 
+
+epiviz.data.DataManager.prototype.getHierarchyFilter = function(chartVisConfigSelectionMap, dataReadyCallback, functionalFilter) {
+
+  for (var chartId in chartVisConfigSelectionMap) {
+    if (!chartVisConfigSelectionMap.hasOwnProperty(chartId)) { continue; }
+    var visConfigSelection = chartVisConfigSelectionMap[chartId];
+  }
+  var dataprovider = visConfigSelection.dataprovider;
+  if (!dataprovider) {
+    visConfigSelection.measurements.foreach(function(m) {
+      if (m.dataprovider()) {
+        dataprovider = m.dataprovider();
+        return true;
+      }
+      return false;
+    });
+  }
+  var datasourceGroup = visConfigSelection.datasourceGroup;
+  if(!datasourceGroup) {
+      visConfigSelection.measurements.foreach(function(m) {
+      if (m.datasourceGroup()) {
+        datasourceGroup = m.datasourceGroup();
+        return true;
+      }
+      return false;
+    });
+  }
+  var provider = this._dataProviderFactory.get(dataprovider) || this._dataProviderFactory.get(epiviz.data.EmptyResponseDataProvider.DEFAULT_ID);
+  
+  var filters = functionalFilter;
+  provider.getData(epiviz.data.Request.getHierarchyFilter(datasourceGroup, visConfigSelection.customData, functionalFilter), function(response) {
+    dataReadyCallback(chartId, response.data());
+  });
+};
+
 /**
  * @param {Object.<string, epiviz.ui.controls.VisConfigSelection>} chartVisConfigSelectionMap
  * @param {function(string, *)} dataReadyCallback

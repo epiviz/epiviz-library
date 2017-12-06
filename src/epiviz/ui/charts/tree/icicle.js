@@ -12,6 +12,7 @@ goog.require('epiviz.ui.charts.VisEventArgs');
 goog.require('epiviz.ui.controls.VisConfigSelection');
 goog.require('epiviz.datatypes.GenomicRange');
 goog.require('epiviz.ui.charts.tree.UiNode');
+goog.require('epiviz.ui.charts.tree.Node');
 
 /**
  * @param {string} id

@@ -350,6 +350,22 @@ epiviz.data.Request.getHierarchy = function(datasourceGroup, nodeId) {
 
 /**
  * @param {string} datasourceGroup
+ * @param {string} [nodeId]
+ * @param {string} filter
+ * @returns {epiviz.data.Request}
+ */
+epiviz.data.Request.getHierarchyFilter = function(datasourceGroup, nodeId, filter) {
+  return epiviz.data.Request.createRequest({
+    version: epiviz.EpiViz.VERSION,
+    action: epiviz.data.Request.Action.GET_HIERARCHY_FILTER,
+    datasourceGroup: datasourceGroup,
+    nodeId: nodeId,
+    filter: filter
+  });
+};
+
+/**
+ * @param {string} datasourceGroup
  * @param {Object.<string, epiviz.ui.charts.tree.NodeSelectionType>} [selection]
  * @param {Object.<string, number>} [order]
  * @param {Object.<number, number>} [selectedLevels]
@@ -439,4 +455,3 @@ epiviz.data.Request.getFeatureData = function(measurementsByDatasource, chartSet
     feature: chartSettings.featureId
   });
 };
-

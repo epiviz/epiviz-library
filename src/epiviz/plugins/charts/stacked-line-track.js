@@ -93,7 +93,7 @@ epiviz.plugins.charts.StackedLineTrack.prototype._drawLines = function(range, da
   /** @type {string} */
   var offset = this.customSettingsValues()[epiviz.plugins.charts.StackedLineTrackType.CustomSettings.OFFSET];
 
-  var absLine = this.customSettingsValues()[epiviz.plugins.charts.LinePlotType.CustomSettings.ABS_LINE_VAL];
+  var absLine = this.customSettingsValues()[epiviz.plugins.charts.StackedLineTrackType.CustomSettings.ABS_LINE_VAL];
 
   var self = this;
 
@@ -140,7 +140,7 @@ epiviz.plugins.charts.StackedLineTrack.prototype._drawLines = function(range, da
 
     for (var k = 0; k < indices.length; ++k) {
       var cell = series.getByGlobalIndex(indices[k]);
-      items.push(new epiviz.ui.charts.ChartObject(sprintf('line_%s_%s', i, cell.globalIndex), cell.rowItem.start(), cell.rowItem.end(), [cell.value], i, [[cell]], [m], sprintf('item data-series-%s', i)));
+      items.push(new epiviz.ui.charts.ChartObject(sprintf('line_%s_%s', i, cell.globalIndex), cell.rowItem.start(), cell.rowItem.end(), [cell.value], i, [[cell]], [m], sprintf('item data-series-%s', i), cell.rowItem.seqName()));
     }
 
     var x = function(j) {

@@ -34,6 +34,12 @@ epiviz.datatypes.GenomicRangeArray = function(measurement, boundaries, globalSta
    * @type {Array.<number>}
    * @private
    */
+  this._seqName = values.chr;
+
+  /**
+   * @type {Array.<number>}
+   * @private
+   */
   this._start = values.start;
 
   /**
@@ -138,7 +144,8 @@ epiviz.datatypes.GenomicRangeArray.prototype.concatValues = function(second, sec
   var
     id = this._id ? this._id.concat(second._id.slice(secondIndex)) : null,
     start = this._start.concat(second._start.slice(secondIndex)),
-    end = this._end ? this._end.concat(second._end.slice(secondIndex)) : null;
+    end = this._end ? this._end.concat(second._end.slice(secondIndex)) : null,
+    seqName = this._seqName ? this._seqName.concat(second._seqName.slice(secondIndex)) : null;
 
   // Concatenate metadata values. We assume that both structures have the same columns
   var metadata = {};
@@ -152,7 +159,8 @@ epiviz.datatypes.GenomicRangeArray.prototype.concatValues = function(second, sec
     start: start,
     end: end,
     strand: strand,
-    metadata: metadata
+    metadata: metadata,
+    chr: seqName
   };
 };
 
@@ -168,7 +176,7 @@ epiviz.datatypes.GenomicRangeArray.prototype.trim = function(range) {
   var start = Math.max(this.boundaries().start(), range.start());
   var end = Math.min(this.boundaries().end(), range.end());
   if (end <= start) { return null; }
-  range = epiviz.datatypes.GenomicRange.fromStartEnd(range.seqName(), start, end);
+  range = epiviz.datatypes.GenomicRange.fromStartEnd(range.seqName(), start, end, range.genome());
 
   var startIndex = -1;
   var endIndex = -1;
@@ -186,6 +194,7 @@ epiviz.datatypes.GenomicRangeArray.prototype.trim = function(range) {
       id: this._id ? this._id.slice(startIndex, endIndex) : null,
       start: this._start.slice(startIndex, endIndex),
       end: this._end ? this._end.slice(startIndex, endIndex) : null,
+      chr: this._seqName ? this._seqName.slice(startIndex, endIndex) : null,
       strand: Array.isArray(this._strand) ? this._strand.slice(startIndex, endIndex) : this._strand,
       metadata: {}
     };
@@ -198,6 +207,7 @@ epiviz.datatypes.GenomicRangeArray.prototype.trim = function(range) {
     values = {
       id: this._id ? [] : null,
       start: [],
+      chr: this._seqName ? [] : null,
       end: this._end ? [] : null,
       strand: Array.isArray(this._strand) ? [] : this._strand,
       metadata: {}
@@ -245,6 +255,14 @@ epiviz.datatypes.GenomicRangeArray.prototype.metadataColumns = function() {
  */
 epiviz.datatypes.GenomicRangeArray.prototype.id = function(index) {
   return this._id ? this._id[index] : this.globalStartIndex() + index;
+};
+
+/**
+ * @param {number} index
+ * @returns {number}
+ */
+epiviz.datatypes.GenomicRangeArray.prototype.seqName = function(index) {
+  return this._seqName ? this._seqName[index] : undefined;
 };
 
 /**
@@ -299,13 +317,14 @@ epiviz.datatypes.GenomicRangeArray.prototype.rowMetadata = function(index) {
  * @returns {string}
  */
 epiviz.datatypes.GenomicRangeArray.prototype.toString = function() {
-  var c, s, e;
+  var g, c, s, e;
   if (this.boundaries()) {
+    g = this.boundaries().genome();
     c = this.boundaries().seqName();
     s = this.boundaries().start();
     e = this.boundaries().end();
   } else {
-    c = s = e = '*';
+    g = c = s = e = '*';
   }
   var header = sprintf('%25s', this.measurement().name().substr(0, 22)) + sprintf(' [%6s%10s%10s]', c, s, e);
   var id = sprintf('%10s:', 'id');
@@ -374,7 +393,8 @@ epiviz.datatypes.GenomicRangeArray.RowItemWrapper.prototype.id = function() {
  * @returns {string}
  */
 epiviz.datatypes.GenomicRangeArray.RowItemWrapper.prototype.seqName = function() {
-  return this._parent.boundaries() ? this._parent.boundaries().seqName() : undefined;
+  // return this._parent.boundaries() ? this._parent.boundaries().seqName() : undefined;
+  return this._parent.seqName(this._index);
 };
 
 /**

@@ -112,11 +112,14 @@ epiviz.EpiViz = function(config, locationManager, measurementsManager, controlMa
 
   this._registerChartPropogateIcicleLocationChange();
 
+  this._registerChartPropagateNavigationChanges();
+
   this._registerUiSettingsChanged();
 
   // Register for Data events
 
   this._registerDataAddMeasurements();
+  this._registerDataLoadMeasurements();
   this._registerDataRemoveMeasurements();
   this._registerDataAddChart();
   this._registerDataRemoveChart();
@@ -130,6 +133,7 @@ epiviz.EpiViz = function(config, locationManager, measurementsManager, controlMa
   this._registerDataSetChartSettings();
   this._registerDataGetChartSettings();
   this._registerDataGetAvailableCharts();
+  this._registerDataUiStatus();
 
   // Register for Workspace events
 
@@ -156,7 +160,7 @@ epiviz.EpiViz = function(config, locationManager, measurementsManager, controlMa
  * @type {string}
  * @const
  */
-epiviz.EpiViz.VERSION = '4';
+epiviz.EpiViz.VERSION = '5';
 
 epiviz.EpiViz.prototype.start = function() {
   this._cookieManager.initialize();
@@ -523,6 +527,15 @@ epiviz.EpiViz.prototype._registerChartPropagateHierarchySelection = function() {
   }));
 };
 
+/**
+ * @private
+ */
+epiviz.EpiViz.prototype._registerChartPropagateNavigationChanges = function() {
+  var self = this;
+  this._chartManager.onChartPropagateNavigationChanges().addListener(new epiviz.events.EventListener(function(e) {
+    self._locationManager.changeCurrentLocation(e.range);
+  }));
+};
 
 /**
  * @private
@@ -569,6 +582,25 @@ epiviz.EpiViz.prototype._registerDataRemoveMeasurements = function() {
       try {
         self._measurementsManager.removeMeasurements(e.measurements);
         e.result.success = true;
+      } catch (error) {
+        e.result.success = false;
+        e.result.errorMessage = error.toString();
+      }
+    }));
+};
+
+/**
+ * @private
+ */
+epiviz.EpiViz.prototype._registerDataLoadMeasurements = function() {
+  var self = this;
+  this._dataManager.onRequestLoadMeasurements().addListener(new epiviz.events.EventListener(
+    /** @param {{measurements: epiviz.measurements.MeasurementSet, result: epiviz.events.EventResult}} e */
+    function(e) {
+      try {
+        var m = self._measurementsManager.getRemoteMeasurements();
+        e.result.success = true;
+        e.result.measurements = m;
       } catch (error) {
         e.result.success = false;
         e.result.errorMessage = error.toString();
@@ -967,4 +999,29 @@ epiviz.EpiViz.prototype._registerChartPropogateIcicleLocationChange = function()
       }
     }
   ));
+};
+
+/**
+ * @private
+ */
+epiviz.EpiViz.prototype._registerDataUiStatus = function() {
+  var self = this;
+  this._dataManager.onRequestUiStatus().addListener(new epiviz.events.EventListener(
+      /**
+       * @param {{id: string, settings: Array, result: epiviz.events.EventResult}} e
+       */
+      function(e) {
+
+        if(self._workspaceManager._activeWorkspace == null) {
+            self._workspaceManager.onActiveWorkspaceChanged().addListener(new epiviz.events.EventListener(
+              function(e1) {
+                e.result.success = true;
+            })
+          );
+        }
+        else {
+                e.result.success = true;
+        }
+      })
+  );
 };

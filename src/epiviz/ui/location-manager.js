@@ -106,6 +106,7 @@ epiviz.ui.LocationManager.prototype.changeCurrentLocation = function(range) {
 epiviz.ui.LocationManager.prototype._doChangeCurrentLocation = function(range) {
   var oldValue = this._currentLocation;
 
+  var genome = range.genome();
   var seqName = range.seqName();
   if (!(range.seqName() in this._seqInfos)) {
     if (!oldValue) { return; }
@@ -126,7 +127,7 @@ epiviz.ui.LocationManager.prototype._doChangeCurrentLocation = function(range) {
 
   this._lastUnfilledRequest = null;
 
-  this._currentLocation = epiviz.datatypes.GenomicRange.fromStartEnd(seqName, start, end);
+  this._currentLocation = epiviz.datatypes.GenomicRange.fromStartEnd(seqName, start, end, genome);
 
   this._currentLocationChanged.notify({oldValue: oldValue, newValue: this._currentLocation});
 };
@@ -156,7 +157,7 @@ epiviz.ui.LocationManager.prototype.updateSeqInfos = function(seqInfos) {
     if (this._lastUnfilledRequest.seqName() in this._seqInfos) {
       this._doChangeCurrentLocation(this._lastUnfilledRequest);
     } else if (seqInfos.length > 0) {
-      var request = new epiviz.datatypes.GenomicRange(seqInfos[0].seqName, this._lastUnfilledRequest.start(), this._lastUnfilledRequest.width());
+      var request = new epiviz.datatypes.GenomicRange(seqInfos[0].seqName, this._lastUnfilledRequest.start(), this._lastUnfilledRequest.width(), seqInfos[0].genome);
       this._doChangeCurrentLocation(request);
     }
   }
@@ -202,7 +203,8 @@ epiviz.ui.LocationManager.prototype.removeSeqNames = function(seqNames) {
     this.changeCurrentLocation(new epiviz.datatypes.GenomicRange(
       eventSeqInfos[0].seqName,
       this._currentLocation.start(),
-      this._currentLocation.width()));
+      this._currentLocation.width(),
+      eventSeqInfos[0].genome));
   }
 };
 

@@ -71,6 +71,7 @@ epiviz.data.Request.Action = {
   // UI actions
   ADD_MEASUREMENTS: 'addMeasurements',
   REMOVE_MEASUREMENTS: 'removeMeasurements',
+  LOAD_MEASUREMENTS: 'loadMeasurements',
   ADD_SEQINFOS: 'addSeqInfos',
   REMOVE_SEQNAMES: 'removeSeqNames',
   ADD_CHART: 'addChart',
@@ -83,7 +84,8 @@ epiviz.data.Request.Action = {
   WRITE_DEBUG_MSG: 'writeMsg',
   PRINT_WORKSPACE: 'printWorkspace',
   LOAD_WORKSPACE: 'loadWorkspace',
-  REGISTER_CHART_TYPES: 'registerChartTypes'
+  REGISTER_CHART_TYPES: 'registerChartTypes',
+  UI_STATUS: 'uiStatus'
 };
 
 /**
@@ -205,6 +207,7 @@ epiviz.data.Request.getRows = function(datasource, range) {
     seqName: range ? range.seqName() : undefined,
     start: range ? range.start() : undefined,
     end: range ? range.end() : undefined,
+    genome: range ? range.genome() : undefined,
     metadata: datasource.metadata()
   });
 };
@@ -222,7 +225,8 @@ epiviz.data.Request.getValues = function(measurement, range) {
     measurement: measurement.id(),
     seqName: range ? range.seqName() : undefined,
     start: range ? range.start() : undefined,
-    end: range ? range.end() : undefined
+    end: range ? range.end() : undefined,
+    genome: range ? range.genome() : undefined
   });
 };
 
@@ -233,7 +237,9 @@ epiviz.data.Request.getValues = function(measurement, range) {
  */
 epiviz.data.Request.getCombined = function(measurementsByDatasource, range) {
   var rawMsByDs = {};
+  var dataSource = "";
   for (var ds in measurementsByDatasource) {
+    dataSource = ds;
     if (!measurementsByDatasource.hasOwnProperty(ds)) { continue; }
     rawMsByDs[ds] = (function() {
       var ms = [];
@@ -249,7 +255,9 @@ epiviz.data.Request.getCombined = function(measurementsByDatasource, range) {
     seqName: range ? range.seqName() : undefined,
     start: range ? range.start() : undefined,
     end: range ? range.end() : undefined,
-    measurements: rawMsByDs
+    measurements: rawMsByDs[dataSource],
+    datasource: dataSource,
+    genome: range ? range.genome() : undefined
   });
 };
 

@@ -322,7 +322,8 @@ epiviz.ui.ControlManager.prototype._initializeChromosomeSelector = function() {
     self._updateSelectedLocation(new epiviz.datatypes.GenomicRange(
       seqName,
       currentLocation.start(),
-      currentLocation.width()));
+      currentLocation.width(),
+      currentLocation.genome()));
   });
 };
 
@@ -341,7 +342,7 @@ epiviz.ui.ControlManager.prototype._initializeLocationTextbox = function() {
 
       var currentLocation = self._locationManager.lastUnfilledLocationChangeRequest() || self._locationManager.currentLocation();
       self._updateSelectedLocation(
-        epiviz.datatypes.GenomicRange.fromStartEnd(currentLocation.seqName(), start, end));
+        epiviz.datatypes.GenomicRange.fromStartEnd(currentLocation.seqName(), start, end, currentLocation.genome()));
 
       return true;
     } catch (error) {
@@ -362,7 +363,7 @@ epiviz.ui.ControlManager.prototype._initializeNavigationButtons = function() {
       var currentLocation = self._locationManager.lastUnfilledLocationChangeRequest() || self._locationManager.currentLocation();
       var start = currentLocation.start() + Math.round(currentLocation.width() * self._stepRatio);
       self._updateSelectedLocation(
-        new epiviz.datatypes.GenomicRange(currentLocation.seqName(), start, currentLocation.width()));
+        new epiviz.datatypes.GenomicRange(currentLocation.seqName(), start, currentLocation.width(), currentLocation.genome()));
     });
 
   $("#moveleft").button({
@@ -375,7 +376,7 @@ epiviz.ui.ControlManager.prototype._initializeNavigationButtons = function() {
       var currentLocation = self._locationManager.lastUnfilledLocationChangeRequest() || self._locationManager.currentLocation();
       var start = currentLocation.start() - Math.round(currentLocation.width() * self._stepRatio);
       self._updateSelectedLocation(
-        new epiviz.datatypes.GenomicRange(currentLocation.seqName(), start, currentLocation.width()));
+        new epiviz.datatypes.GenomicRange(currentLocation.seqName(), start, currentLocation.width(), currentLocation.genome()));
     });
 };
 
@@ -403,7 +404,7 @@ epiviz.ui.ControlManager.prototype._initializeZoomButtons = function() {
     var width = Math.round(currentLocation.width() * zoomRatio);
     var start = Math.round(mid - width * 0.5);
     self._updateSelectedLocation(
-      new epiviz.datatypes.GenomicRange(currentLocation.seqName(), start, width));
+      new epiviz.datatypes.GenomicRange(currentLocation.seqName(), start, width, currentLocation.genome()));
   };
 
   zoomin.click(function() { zoomHandler(self._zoominRatio); });
@@ -691,7 +692,8 @@ epiviz.ui.ControlManager.prototype._initializeScreenshotMenu = function() {
     text:false
   })
   .click( function() {
-
+    
+    var name = $('#save-workspace-text').val();
     self._saveWorkspace.notify({name: name, id: name == self._activeWorkspaceInfo.name ? self._activeWorkspaceInfo.id : null});
 
     savePageButton.append(sprintf('<div id="loading" title="printing workspace">' +

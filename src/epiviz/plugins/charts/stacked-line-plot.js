@@ -300,7 +300,8 @@ epiviz.plugins.charts.StackedLinePlot.prototype._drawLines = function(range, dat
       index,
       measurements.map(function(m, i) { return [data.getByGlobalIndex(m, index)]; }), // valueItems one for each measurement
       measurements, // measurements
-      '');
+      '',
+      rowItem.seqName());
   });
 
   var seriesAreas = indices.map(function(index) { return valuesForIndex(index); });
@@ -425,53 +426,53 @@ epiviz.plugins.charts.StackedLinePlot.prototype.colorLabels = function() {
 };
 
 
-epiviz.plugins.charts.StackedLinePlot.prototype.doHover = function(selectedObject) {
+// epiviz.plugins.charts.StackedLinePlot.prototype.doHover = function(selectedObject) {
 
-    var hoverOpacity = this.customSettingsValues()[epiviz.plugins.charts.StackedLinePlotType.CustomSettings.HOVER_OPACITY];
+//     var hoverOpacity = this.customSettingsValues()[epiviz.plugins.charts.StackedLinePlotType.CustomSettings.HOVER_OPACITY];
 
 
-  var itemsGroup = this._container.find('.items');
-  var unselectedHoveredGroup = itemsGroup.find('> .hovered');
-  var selectedGroup = itemsGroup.find('> .selected');
-  var selectedHoveredGroup = selectedGroup.find('> .hovered');
+//   var itemsGroup = this._container.find('.items');
+//   var unselectedHoveredGroup = itemsGroup.find('> .hovered');
+//   var selectedGroup = itemsGroup.find('> .selected');
+//   var selectedHoveredGroup = selectedGroup.find('> .hovered');
 
-  var filter = function() {
-    return selectedObject.overlapsWith(d3.select(this).data()[0]);
-  };
-  var selectItems = itemsGroup.find('> .item').filter(filter);
-  unselectedHoveredGroup.append(selectItems);
+//   var filter = function() {
+//     return selectedObject.overlapsWith(d3.select(this).data()[0]);
+//   };
+//   var selectItems = itemsGroup.find('> .item').filter(filter);
+//   unselectedHoveredGroup.append(selectItems);
 
-  selectItems = selectedGroup.find('> .item').filter(filter);
-  selectedHoveredGroup.append(selectItems);
+//   selectItems = selectedGroup.find('> .item').filter(filter);
+//   selectedHoveredGroup.append(selectItems);
 
-        this._svg.selectAll(".item")
-      .style("opacity", 1 - hoverOpacity);
+//         this._svg.selectAll(".item")
+//       .style("opacity", 1 - hoverOpacity);
 
-      this._svg.selectAll(".hovered .item")
-      .style("opacity", hoverOpacity);
-};
+//       this._svg.selectAll(".hovered .item")
+//       .style("opacity", hoverOpacity);
+// };
 
 /**
  */
-epiviz.plugins.charts.StackedLinePlot.prototype.doUnhover = function() {
+// epiviz.plugins.charts.StackedLinePlot.prototype.doUnhover = function() {
 
-    var hoverOpacity = this.customSettingsValues()[epiviz.plugins.charts.StackedLinePlotType.CustomSettings.HOVER_OPACITY];
+//     var hoverOpacity = this.customSettingsValues()[epiviz.plugins.charts.StackedLinePlotType.CustomSettings.HOVER_OPACITY];
 
 
-  var itemsGroup = this._container.find('.items');
-  var unselectedHoveredGroup = itemsGroup.find('> .hovered');
-  var selectedGroup = itemsGroup.find('> .selected');
-  var selectedHoveredGroup = selectedGroup.find('> .hovered');
+//   var itemsGroup = this._container.find('.items');
+//   var unselectedHoveredGroup = itemsGroup.find('> .hovered');
+//   var selectedGroup = itemsGroup.find('> .selected');
+//   var selectedHoveredGroup = selectedGroup.find('> .hovered');
 
-  itemsGroup.prepend(unselectedHoveredGroup.children());
+//   itemsGroup.prepend(unselectedHoveredGroup.children());
 
-  selectedGroup.prepend(selectedHoveredGroup.children());
+//   selectedGroup.prepend(selectedHoveredGroup.children());
 
-        this._svg.selectAll(".item")
-      .style("opacity", 1);
+//         this._svg.selectAll(".item")
+//       .style("opacity", 1);
 
-      this._svg.selectAll(".hovered .item")
-      .style("opacity", 1);
-};
+//       this._svg.selectAll(".hovered .item")
+//       .style("opacity", 1);
+// };
 
 // goog.inherits(epiviz.plugins.charts.StackedLinePlot, epiviz.ui.charts.Plot);

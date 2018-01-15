@@ -117,6 +117,19 @@ epiviz.data.DataProvider = function(id) {
    */
   this._requestLoadWorkspace = new epiviz.events.Event();
 
+    /**
+   * @type {epiviz.events.Event.<{result: epiviz.events.EventResult}>}
+   * @private
+   */
+  this._requestUiStatus = new epiviz.events.Event();
+
+  /**
+   * @type {epiviz.events.Event.<{result: epiviz.events.EventResult}>}
+   * @private
+   */
+  this._requestLoadMeasurements = new epiviz.events.Event();
+
+
 };
 
 /**
@@ -157,6 +170,12 @@ epiviz.data.DataProvider.prototype.onRequestAddMeasurements = function() { retur
  * @returns {epiviz.events.Event.<{measurements: epiviz.measurements.MeasurementSet, result: epiviz.events.EventResult}>}
  */
 epiviz.data.DataProvider.prototype.onRequestRemoveMeasurements = function() { return this._requestRemoveMeasurements; };
+
+/**
+ * Fired whenever the data provider requests the UI to get existing measurements
+ * @returns {epiviz.events.Event.<{measurements: epiviz.measurements.MeasurementSet, result: epiviz.events.EventResult}>}
+ */
+epiviz.data.DataProvider.prototype.onRequestLoadMeasurements = function() { return this._requestLoadMeasurements; };
 
 /**
  * The type argument is a string denoting the complete class name of the chart to be used.
@@ -219,3 +238,9 @@ epiviz.data.DataProvider.prototype.onRequestGetAvailableCharts = function() { re
  * @returns {epiviz.events.Event.<{result: epiviz.events.EventResult}>}
  */
 epiviz.data.DataProvider.prototype.onRequestLoadWorkspace = function() { return this._requestLoadWorkspace; };
+
+
+/**
+ * @returns {epiviz.events.Event.<{result: epiviz.events.EventResult}>}
+ */
+epiviz.data.DataProvider.prototype.onRequestUiStatus = function() { return this._requestUiStatus; };

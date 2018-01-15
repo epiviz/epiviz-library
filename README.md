@@ -24,7 +24,21 @@ To Compile closure
 
 ```
 java -jar compiler.jar 
-    --js_output_file=bin/epiviz-compiled-jar.js 
+    --js_output_file=bin/epiviz.min.js 
+    --js 'src/epiviz/**' 
+    --js '!src/epiviz/default-settings.js' 
+    --js '!src/epiviz/epivizr-settings.js' 
+    --js '!src/epiviz/standalone-settings.js' 
+    --js 'closure-library/closure/goog/base.js' 
+    --entry_point=goog:epiviz.main
+```
+
+For development mode - 
+
+```
+java -jar compiler.jar 
+    --compilation_level WHITESPACE_ONLY
+    --js_output_file=bin/epiviz.js 
     --js 'src/epiviz/**' 
     --js '!src/epiviz/default-settings.js' 
     --js '!src/epiviz/epivizr-settings.js' 

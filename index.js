@@ -1,4 +1,4 @@
 'use strict';
 
-module.exports = require('./bin/epiviz-compiled.js').epiviz;
+module.exports = require('./bin/epiviz.js').epiviz;
 

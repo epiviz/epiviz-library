@@ -8,6 +8,8 @@ goog.provide('epiviz.ui.charts.tree.IcicleType');
 
 goog.require('epiviz.ui.charts.tree.HierarchyVisualizationType');
 goog.require('epiviz.ui.charts.CustomSetting');
+goog.require('epiviz.ui.charts.tree.Icicle');
+
 
 /**
  * @param {epiviz.Config} config

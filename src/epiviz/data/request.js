@@ -62,16 +62,18 @@ epiviz.data.Request.Action = {
   PROPAGATE_HIERARCHY_CHANGES: 'propagateHierarchyChanges',
 
   GET_PCA: 'getPCA',
+  GET_PCoA: 'getPCoA',
   GET_DIVERSITY: 'getDiversity',
+  GET_FEATURE_DATA: 'getFeatureData',
 
   GET_CHART_SETTINGS: 'getChartSettings',
   SET_CHART_SETTINGS: 'setChartSettings',
   GET_AVAILABLE_CHARTS: 'getAvailableCharts',
+  SPLINES_SETTINGS: 'splinesSettings',
 
   // UI actions
   ADD_MEASUREMENTS: 'addMeasurements',
   REMOVE_MEASUREMENTS: 'removeMeasurements',
-  LOAD_MEASUREMENTS: 'loadMeasurements',
   ADD_SEQINFOS: 'addSeqInfos',
   REMOVE_SEQNAMES: 'removeSeqNames',
   ADD_CHART: 'addChart',
@@ -84,8 +86,7 @@ epiviz.data.Request.Action = {
   WRITE_DEBUG_MSG: 'writeMsg',
   PRINT_WORKSPACE: 'printWorkspace',
   LOAD_WORKSPACE: 'loadWorkspace',
-  REGISTER_CHART_TYPES: 'registerChartTypes',
-  UI_STATUS: 'uiStatus'
+  REGISTER_CHART_TYPES: 'registerChartTypes'
 };
 
 /**
@@ -207,7 +208,6 @@ epiviz.data.Request.getRows = function(datasource, range) {
     seqName: range ? range.seqName() : undefined,
     start: range ? range.start() : undefined,
     end: range ? range.end() : undefined,
-    genome: range ? range.genome() : undefined,
     metadata: datasource.metadata()
   });
 };
@@ -225,8 +225,7 @@ epiviz.data.Request.getValues = function(measurement, range) {
     measurement: measurement.id(),
     seqName: range ? range.seqName() : undefined,
     start: range ? range.start() : undefined,
-    end: range ? range.end() : undefined,
-    genome: range ? range.genome() : undefined
+    end: range ? range.end() : undefined
   });
 };
 
@@ -237,47 +236,24 @@ epiviz.data.Request.getValues = function(measurement, range) {
  */
 epiviz.data.Request.getCombined = function(measurementsByDatasource, range) {
   var rawMsByDs = {};
-  var dataSource = "";
-  var measure;
   for (var ds in measurementsByDatasource) {
-    dataSource = ds;
     if (!measurementsByDatasource.hasOwnProperty(ds)) { continue; }
     rawMsByDs[ds] = (function() {
       var ms = [];
       measurementsByDatasource[ds].foreach(function(m) {
-        if(dataSource == "genes") {
-          measure = m;
-        }
         ms.push(m.id());
       });
       return ms;
     })();
   }
-  if(dataSource == "genes") {
-    return epiviz.data.Request.createRequest({
-      version: epiviz.EpiViz.VERSION,
-      action: epiviz.data.Request.Action.GET_COMBINED,
-      seqName: range ? range.seqName() : undefined,
-      start: range ? range.start() : undefined,
-      end: range ? range.end() : undefined,
-      measurements: rawMsByDs[dataSource],
-      datasource: dataSource,
-      genome: range ? range.genome() : undefined,
-      metadata: measure.metadata()
-    });  
-  }
-
   return epiviz.data.Request.createRequest({
     version: epiviz.EpiViz.VERSION,
     action: epiviz.data.Request.Action.GET_COMBINED,
     seqName: range ? range.seqName() : undefined,
     start: range ? range.start() : undefined,
     end: range ? range.end() : undefined,
-    measurements: rawMsByDs[dataSource],
-    datasource: dataSource,
-    genome: range ? range.genome() : undefined
+    measurements: rawMsByDs
   });
-
 };
 
 /**
@@ -296,11 +272,12 @@ epiviz.data.Request.getMeasurements = function(datasourceGroup) {
  * @param {number} maxResults
  * @returns {epiviz.data.Request}
  */
-epiviz.data.Request.search = function(query, maxResults) {
+epiviz.data.Request.search = function(query, maxResults, datasourceGroup) {
   return epiviz.data.Request.createRequest({
     version: epiviz.EpiViz.VERSION,
     action: epiviz.data.Request.Action.SEARCH,
     q: query || '',
+    datasourceGroup: datasourceGroup,
     maxResults: maxResults
   });
 };
@@ -415,6 +392,30 @@ epiviz.data.Request.getPCA = function(measurementsByDatasource, range) {
   });
 };
 
+/**
+ * @param {Object.<string, epiviz.measurements.MeasurementSet>} measurementsByDatasource
+ * @param {epiviz.datatypes.GenomicRange} range
+ * @returns {epiviz.data.Request}
+ */
+epiviz.data.Request.getPCoA = function(measurementsByDatasource, range) {
+  var rawMsByDs = {};
+  for (var ds in measurementsByDatasource) {
+    if (!measurementsByDatasource.hasOwnProperty(ds)) { continue; }
+    rawMsByDs[ds] = (function() {
+      var ms = [];
+      measurementsByDatasource[ds].foreach(function(m) {
+        ms.push(m.id());
+      });
+      return ms;
+    })();
+  }
+  return epiviz.data.Request.createRequest({
+    version: epiviz.EpiViz.VERSION,
+    action: epiviz.data.Request.Action.GET_PCoA,
+    measurements: rawMsByDs
+  });
+};
+
 
 /**
  * @param {Object.<string, epiviz.measurements.MeasurementSet>} measurementsByDatasource
@@ -440,4 +441,42 @@ epiviz.data.Request.getDiversity = function(measurementsByDatasource, range) {
   });
 };
 
+/**
+ * @param {Object.<string, epiviz.measurements.MeasurementSet>} measurementsByDatasource
+ * @param {epiviz.datatypes.GenomicRange} range
+ * @returns {epiviz.data.Request}
+ */
+epiviz.data.Request.getFeatureData = function(measurementsByDatasource, chartSettings, range) {
+  var rawMsByDs = {};
+  for (var ds in measurementsByDatasource) {
+    if (!measurementsByDatasource.hasOwnProperty(ds)) { continue; }
+    rawMsByDs[ds] = (function() {
+      var ms = [];
+      measurementsByDatasource[ds].foreach(function(m) {
+        ms.push(m.id());
+      });
+      return ms;
+    })();
+  }
+  return epiviz.data.Request.createRequest({
+    version: epiviz.EpiViz.VERSION,
+    action: epiviz.data.Request.Action.GET_FEATURE_DATA,
+    measurements: rawMsByDs,
+    feature: chartSettings.featureId
+  });
+};
 
+
+/**
+ * @param {Object.<string, epiviz.measurements.MeasurementSet>} measurementsByDatasource
+ * @param {epiviz.datatypes.GenomicRange} range
+ * @returns {epiviz.data.Request}
+ */
+epiviz.data.Request.updateSplinesSettings = function(settings) {
+
+  return epiviz.data.Request.createRequest({
+    version: epiviz.EpiViz.VERSION,
+    action: epiviz.data.Request.Action.SPLINES_SETTINGS,
+    settings: settings
+  });
+};

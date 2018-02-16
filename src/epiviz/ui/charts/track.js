@@ -36,11 +36,6 @@ epiviz.ui.charts.Track = function(id, container, properties) {
    * @protected
    */
   this._highlightGroup = null;
-
-  /**
-   * Notify navigation drag events
-   */
-  this._propagateNavigationChanges = new epiviz.events.Event();
 };
 
 /*
@@ -166,9 +161,8 @@ epiviz.ui.charts.Track.prototype._captureMouseHover = function() {
     .range([this._lastRange.start(), this._lastRange.end()]);
   var start = inverseXScale(d3.mouse(this._background[0][0])[0]) - this._binSize / 2;
   var end = start + this._binSize;
-  var seqName = this._lastRange.seqName();
 
-  var selectedObject = new epiviz.ui.charts.ChartObject(sprintf('%s-highlight', this.id()), start, end, null, null, null, null, null, seqName);
+  var selectedObject = new epiviz.ui.charts.ChartObject(sprintf('%s-highlight', this.id()), start, end);
   this._hover.notify(new epiviz.ui.charts.VisEventArgs(this.id(), selectedObject));
 };
 
@@ -202,7 +196,7 @@ epiviz.ui.charts.Track.prototype._drawLegend = function() {
   var textLength = 0;
   var titleEntriesStartPosition = [];
 
-  this._container.find(' .chart-title')
+  $('#' + this.id() + ' .chart-title')
     .each(function(i) {
       titleEntriesStartPosition.push(textLength);
       textLength += this.getBBox().width + 15;

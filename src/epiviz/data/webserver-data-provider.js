@@ -42,7 +42,7 @@ epiviz.data.WebServerDataProvider.DEFAULT_SERVER_ENDPOINT = 'data/main.php';
  * @param {epiviz.data.Request} request
  * @param {function(epiviz.data.Response.<*>)} callback
  */
-epiviz.data.WebServerDataProvider.prototype.getData = function(request, callback, failCallback) {
+epiviz.data.WebServerDataProvider.prototype.getData = function(request, callback) {
   if (request.isEmpty()) { return; }
 
   if (request.method() == epiviz.data.Request.Method.GET) {
@@ -50,14 +50,10 @@ epiviz.data.WebServerDataProvider.prototype.getData = function(request, callback
 
     epiviz.data.WebServerDataProvider.makeGetRequest(query, function(jsondata) {
       callback(epiviz.data.Response.fromRawObject(jsondata));
-    }, function(jqXHR, textStatus, errorThrown) {
-      failCallback(jqXHR, textStatus, errorThrown);
     });
   } else {
     epiviz.data.WebServerDataProvider.makePostRequest(this._serverEndpoint, request.joinArgs(), function(jsondata) {
       callback(epiviz.data.Response.fromRawObject(jsondata));
-    }, function(jqXHR, textStatus, errorThrown) {
-      failCallback(jqXHR, textStatus, errorThrown);
     });
   }
 };
@@ -67,7 +63,7 @@ epiviz.data.WebServerDataProvider.prototype.getData = function(request, callback
  * @param query
  * @param callback
  */
-epiviz.data.WebServerDataProvider.makeGetRequest = function(query, callback, failCallback) {
+epiviz.data.WebServerDataProvider.makeGetRequest = function(query, callback) {
   var request = $.ajax({
     type: "get",
     url: query,
@@ -85,7 +81,6 @@ epiviz.data.WebServerDataProvider.makeGetRequest = function(query, callback, fai
   // callback handler that will be called on failure
   request.fail(function (jqXHR, textStatus, errorThrown){
     //console.error("The following error occured: " + textStatus, errorThrown);
-    failCallback(jqXHR, textStatus, errorThrown);
   });
 
   // callback handler that will be called regardless
@@ -98,7 +93,7 @@ epiviz.data.WebServerDataProvider.makeGetRequest = function(query, callback, fai
  * @param {Object} postData
  * @param {function} callback
  */
-epiviz.data.WebServerDataProvider.makePostRequest = function(query, postData, callback, failCallback) {
+epiviz.data.WebServerDataProvider.makePostRequest = function(query, postData, callback) {
   var request = $.ajax({
     type: "post",
     url: query,
@@ -117,7 +112,6 @@ epiviz.data.WebServerDataProvider.makePostRequest = function(query, postData, ca
   // callback handler that will be called on failure
   request.fail(function (jqXHR, textStatus, errorThrown){
     console.error("The following error occured: " + textStatus, errorThrown);
-    failCallback(jqXHR, textStatus, errorThrown);
   });
 
   // callback handler that will be called regardless

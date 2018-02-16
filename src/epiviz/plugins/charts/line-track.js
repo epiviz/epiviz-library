@@ -163,8 +163,6 @@ epiviz.plugins.charts.LineTrack.prototype._drawLines = function(range, data, del
 
   var interpolation = this.customSettingsValues()[epiviz.plugins.charts.LineTrackType.CustomSettings.INTERPOLATION];
 
-  var absLine = this.customSettingsValues()[epiviz.plugins.charts.LineTrackType.CustomSettings.ABS_LINE_VAL];
-
   var self = this;
 
   var invXScale = d3.scale.linear()
@@ -174,8 +172,7 @@ epiviz.plugins.charts.LineTrack.prototype._drawLines = function(range, data, del
   var extendedRange = epiviz.datatypes.GenomicRange.fromStartEnd(
     range.seqName(),
     Math.min(range.start(), range.start() + deltaInBp),
-    Math.max(range.end(), range.end() + deltaInBp),
-    range.genome());
+    Math.max(range.end(), range.end() + deltaInBp));
 
   var graph = this._svg.select('.lines');
 
@@ -203,13 +200,7 @@ epiviz.plugins.charts.LineTrack.prototype._drawLines = function(range, data, del
 
     for (var k = 0; k < indices.length; ++k) {
       var cell = series.get(indices[k]);
-      items.push(new epiviz.ui.charts.ChartObject(sprintf('line_%s_%s', i, cell.globalIndex), 
-                          cell.rowItem.start(), 
-                          cell.rowItem.end(), 
-                          [cell.value], i, 
-                          [[cell]], [m], 
-                          sprintf('item data-series-%s', i),
-                          cell.rowItem.seqName()));
+      items.push(new epiviz.ui.charts.ChartObject(sprintf('line_%s_%s', i, cell.globalIndex), cell.rowItem.start(), cell.rowItem.end(), [cell.value], i, [[cell]], [m], sprintf('item data-series-%s', i)));
     }
 
     var x = function(j) {

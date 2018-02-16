@@ -129,8 +129,7 @@ epiviz.datatypes.GenomicArray.prototype.merge = function(arr) {
     boundaries = epiviz.datatypes.GenomicRange.fromStartEnd(
       first.boundaries().seqName(),
       first.boundaries().start(),
-      second.boundaries().end(),
-      first.boundaries().genome()),
+      second.boundaries().end()),
     values = first.concatValues(second, secondIndex);
 
   return this.createNew(measurement, boundaries, globalStartIndex, values);

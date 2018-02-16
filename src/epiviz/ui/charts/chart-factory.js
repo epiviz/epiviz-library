@@ -8,7 +8,6 @@ goog.provide('epiviz.ui.charts.ChartFactory');
 
 goog.require('epiviz.utils');
 goog.require('epiviz.plugins.charts.BlocksTrackType');
-goog.require('epiviz.plugins.charts.StackedBlocksTrackType');
 goog.require('epiviz.plugins.charts.LineTrackType');
 goog.require('epiviz.plugins.charts.StackedLineTrackType');
 goog.require('epiviz.plugins.charts.ScatterPlotType');
@@ -18,7 +17,7 @@ goog.require('epiviz.plugins.charts.LinePlotType');
 goog.require('epiviz.plugins.charts.StackedLinePlotType');
 goog.require('epiviz.ui.charts.tree.IcicleType');
 goog.require('epiviz.plugins.charts.DiversityScatterPlotType');
-goog.require('epiviz.plugins.charts.CustomScatterPlotType');
+goog.require('epiviz.plugins.charts.FeatureScatterPlotType');
 
 
 /**

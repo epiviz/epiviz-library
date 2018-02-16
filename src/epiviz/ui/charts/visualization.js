@@ -303,6 +303,12 @@ epiviz.ui.charts.Visualization = function(id, container, properties) {
    * @protected
    */
   this._dataWaitEnd = new epiviz.events.Event();
+
+    /**
+   * @type {epiviz.events.Event.<epiviz.ui.charts.VisEventArgs.<epiviz.ui.charts.VisObject>>}
+   * @protected
+   */
+  this._splinesSettings = new epiviz.events.Event();
 };
 
 /**
@@ -325,9 +331,9 @@ epiviz.ui.charts.Visualization.prototype._initialize = function() {
   this._container.addClass('visualization-container');
 
   this._container.append(sprintf('<svg id="%s" class="visualization" width="%s" height="%s"><style type="text/css"></style><defs></defs></svg>', this._svgId, width, height));
-  this._svg = d3.select(this._container.find("#"+this._svgId)[0]);
+  this._svg = d3.select('#' + this._svgId);
 
-  var jSvg = $(this._container.find("#"+this._svgId)[0]);
+  var jSvg = $('#' + this._svgId);
 
   /**
    * The difference in size between the container and the inner SVG
@@ -938,21 +944,7 @@ epiviz.ui.charts.Visualization.prototype.doHover = function(selectedObject) {
   var selectedHoveredGroup = selectedGroup.find('> .hovered');
 
   var filter = function() {
-    if(Array.isArray(selectedObject)) {
-      var match = false;
-
-      for(var sIndex = 0; sIndex < selectedObject.length; sIndex++) {
-        var sel = selectedObject[sIndex];
-        if (sel.overlapsWith(d3.select(this).data()[0])) {
-          match = true;
-        }
-      }
-
-      return match;
-    }
-    else {
-      return selectedObject.overlapsWith(d3.select(this).data()[0]);
-    }
+    return selectedObject.overlapsWith(d3.select(this).data()[0]);
   };
   var selectItems = itemsGroup.find('> .item').filter(filter);
   unselectedHoveredGroup.append(selectItems);

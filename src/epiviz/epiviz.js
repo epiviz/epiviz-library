@@ -106,20 +106,18 @@ epiviz.EpiViz = function(config, locationManager, measurementsManager, controlMa
   this._registerUiSearchWorkspaces();
   this._registerUiActiveWorkspaceChanged();
   this._registerUiSearch();
+  this._registerUISplinesSettings();
 
   this._registerChartRequestHierarchy();
   this._registerChartPropagateHierarchySelection();
 
   this._registerChartPropogateIcicleLocationChange();
 
-  this._registerChartPropagateNavigationChanges();
-
   this._registerUiSettingsChanged();
 
   // Register for Data events
 
   this._registerDataAddMeasurements();
-  this._registerDataLoadMeasurements();
   this._registerDataRemoveMeasurements();
   this._registerDataAddChart();
   this._registerDataRemoveChart();
@@ -133,7 +131,6 @@ epiviz.EpiViz = function(config, locationManager, measurementsManager, controlMa
   this._registerDataSetChartSettings();
   this._registerDataGetChartSettings();
   this._registerDataGetAvailableCharts();
-  this._registerDataUiStatus();
 
   // Register for Workspace events
 
@@ -142,6 +139,14 @@ epiviz.EpiViz = function(config, locationManager, measurementsManager, controlMa
   this._registerActiveWorkspaceChanged();
   this._registerActiveWorkspaceContentChanged();
   this._registerLocationChanged();
+
+  // Register Loading App events
+  this._registerLoadingAppScreen();
+  this._registerChartRequestFeature();
+  this._registerHierarchyChartRequestAddFeature();
+
+
+  this._registerDataFailed();
 
   /*
    * Prevent closing if workspace has changed
@@ -160,18 +165,22 @@ epiviz.EpiViz = function(config, locationManager, measurementsManager, controlMa
  * @type {string}
  * @const
  */
-epiviz.EpiViz.VERSION = '5';
+epiviz.EpiViz.VERSION = '4';
 
 epiviz.EpiViz.prototype.start = function() {
-  this._cookieManager.initialize();
-
-  this._controlManager.initialize();
-  
-  this._workspaceManager.initialize();
 
   this._measurementsManager.initialize();
-
+  this._cookieManager.initialize();
   this._locationManager.initialize();
+  this._controlManager.initialize();
+  this._workspaceManager.initialize();
+
+  var requestWorkspaceId = epiviz.ui.WebArgsManager.WEB_ARGS['ws'] || epiviz.ui.WebArgsManager.WEB_ARGS['workspace'] || null;
+  var metavizr = epiviz.ui.WebArgsManager.WEB_ARGS['websocket-host'] || null;
+  
+  if (requestWorkspaceId == null && metavizr == null) {
+    this._controlManager.startApp();
+  }
 };
 
 /**
@@ -191,15 +200,25 @@ epiviz.EpiViz.prototype.config = function() {
  * @returns {string} the id of the chart just created
  * @private
  */
-epiviz.EpiViz.prototype._addChart = function(type, visConfigSelection, chartId, chartProperties) {
-  chartId = this._chartManager.addChart(type, visConfigSelection, chartId, chartProperties);
+epiviz.EpiViz.prototype._addChart = function(type, visConfigSelection, chartId, chartProperties, chartTitle) {
+  chartId = this._chartManager.addChart(type, visConfigSelection, chartId, chartProperties, chartTitle);
   var self = this;
+  this._chartManager.dataWaitStart(chartId);
   // TODO: Maybe later implement hierarchical display type (see display-type.js for the start of the idea)
-  if (type.typeName() == 'epiviz.plugins.charts.CustomScatterPlot'){
+  if (type.typeName() == 'epiviz.plugins.charts.PCAScatterPlot'){
     var range = null;
     var chartMeasurementsMap = {};
     chartMeasurementsMap[chartId] = visConfigSelection.measurements;
     this._dataManager.getPCA(range, chartMeasurementsMap,
+      function(chartId, data) {
+        self._chartManager.updateCharts(range, data, [chartId]);
+      });
+  }
+  else if (type.typeName() == 'epiviz.plugins.charts.PCoAScatterPlot'){
+    var range = null;
+    var chartMeasurementsMap = {};
+    chartMeasurementsMap[chartId] = visConfigSelection.measurements;
+    this._dataManager.getPCoA(range, chartMeasurementsMap,
       function(chartId, data) {
         self._chartManager.updateCharts(range, data, [chartId]);
       });
@@ -217,13 +236,33 @@ epiviz.EpiViz.prototype._addChart = function(type, visConfigSelection, chartId, 
     var chartVisConfigSelectionMap = {};
     chartVisConfigSelectionMap[chartId] = visConfigSelection;
     var range = this._workspaceManager.activeWorkspace().range();
+    var seqInfo = this._locationManager._seqInfos[visConfigSelection.datasourceGroup] || this._locationManager._seqInfos["metavizr"];
+    // var range = new epiviz.datatypes.GenomicRange(seqInfo.seqName, seqInfo.min, seqInfo.max);
+    if(seqInfo) {
+      range = new epiviz.datatypes.GenomicRange(seqInfo.seqName, seqInfo.min, seqInfo.max);
+    }
+    this._locationManager.changeCurrentLocation(range);
     this._dataManager.getHierarchy(chartVisConfigSelectionMap,
       function(chartId, hierarchy) {
         self._chartManager.updateCharts(range, hierarchy, [chartId]);
       });
-  } else {
+  } 
+  else if (type.typeName() == "epiviz.plugins.charts.FeatureScatterPlot")  {
+    var range = null;
+    var chartMeasurementsMap = {};
+    chartMeasurementsMap[chartId] = visConfigSelection.measurements;
+    var properties = type.customSettingsValues();
+    if(chartProperties) {
+      properties = chartProperties.customSettingsValues;
+    }
+    this._dataManager.getFeatureData(range, chartMeasurementsMap, properties,
+      function(chartId, data) {
+        self._chartManager.updateCharts(range, data, [chartId]);
+      });
+  } 
+  else {
     var range = this._workspaceManager.activeWorkspace().range();
-    this._chartManager.dataWaitStart(chartId);
+    // this._chartManager.dataWaitStart(chartId);
     var chartMeasurementsMap = {};
     chartMeasurementsMap[chartId] = visConfigSelection.measurements;
     this._dataManager.getData(range, chartMeasurementsMap,
@@ -342,7 +381,7 @@ epiviz.EpiViz.prototype._registerUiAddChart = function() {
   this._controlManager.onAddChart().addListener(new epiviz.events.EventListener(
     /** @param {{type: epiviz.ui.charts.ChartType, visConfigSelection: epiviz.ui.controls.VisConfigSelection}} e */
     function(e) {
-      self._addChart(e.type, e.visConfigSelection);
+      self._addChart(e.type, e.visConfigSelection, undefined, undefined, e.title);
     }));
 };
 
@@ -493,10 +532,44 @@ epiviz.EpiViz.prototype._registerUiSearch = function() {
      * @param {{searchTerm: string, callback: (function(Array.<{probe: string, gene: string, seqName: string, start: number, end: number}>))}} e
      */
     function(e) {
-      self._dataManager.search(function(results) {
-        e.callback(results);
-      }, e.searchTerm);
+
+      // find current icicle on the workspace
+      var iciclePlot, icicleMeasuremens;
+
+      for (var chartId in self._chartManager._charts) {
+          if (!self._chartManager._charts.hasOwnProperty(chartId)) { continue; }
+          if (self._chartManager._charts[chartId].displayType() == epiviz.ui.charts.VisualizationType.DisplayType.DATA_STRUCTURE) { 
+            iciclePlot = self._chartManager._charts[chartId]; 
+            // icicleMeasuremens = self._chartManager._charts[chartId].measurements();
+          } 
+        }
+
+      if(iciclePlot != null || iciclePlot != undefined) {
+        self._dataManager.search(function(results) {
+          e.callback(results);
+        }, e.searchTerm, iciclePlot);
+      }
+
     }));
+
+  this._chartManager._chartFeatureSearchEvent.addListener(new epiviz.events.EventListener(
+    function(e) {
+      // find current icicle on the workspace
+      var iciclePlot, icicleMeasuremens;
+      for (var chartId in self._chartManager._charts) {
+          if (!self._chartManager._charts.hasOwnProperty(chartId)) { continue; }
+          if (self._chartManager._charts[chartId].displayType() == epiviz.ui.charts.VisualizationType.DisplayType.DATA_STRUCTURE) { 
+            iciclePlot = self._chartManager._charts[chartId]; 
+            // icicleMeasuremens = self._chartManager._charts[chartId].measurements();
+          } 
+        }
+
+      if(iciclePlot != null || iciclePlot != undefined) {
+        self._dataManager.search(function(results) {
+          e.callback(results);
+        }, e.searchTerm, iciclePlot);
+      }
+  }));
 };
 
 /**
@@ -504,12 +577,95 @@ epiviz.EpiViz.prototype._registerUiSearch = function() {
  */
 epiviz.EpiViz.prototype._registerChartRequestHierarchy = function() {
   var self = this;
+
   this._chartManager.onChartRequestHierarchy().addListener(new epiviz.events.EventListener(function(e) {
     var map = {};
     map[e.id] = e.args;
     self._dataManager.getHierarchy(map, function(chartId, data) {
-      self._chartManager.updateCharts(undefined, data, [chartId]);
-    })
+
+      var SunburstPlot;
+
+      for (var schartId in self._chartManager._charts) {
+          if (!self._chartManager._charts.hasOwnProperty(schartId)) { continue; }
+          if (self._chartManager._charts[schartId].type == "Sunburst") { 
+            SunburstPlot = schartId; 
+          } 
+        }
+
+      self._chartManager.updateCharts(undefined, data, [chartId, SunburstPlot]);
+    });
+  }));
+};
+
+/**
+ * @private
+ */
+epiviz.EpiViz.prototype._registerChartRequestFeature = function() {
+  var self = this;
+  self._chartManager._chartFeatureGetDataEvent.addListener(new epiviz.events.EventListener(function(e) {
+    var chart = self._chartManager._charts[e.chartId];
+    var chartMeasurementsMap = {};
+    chartMeasurementsMap[e.chartId] = chart._properties.visConfigSelection.measurements;
+    self._dataManager.getFeatureData(null, chartMeasurementsMap, chart.customSettingsValues(),
+      function(chartId, data) {
+        self._chartManager.updateCharts(null, data, [chartId]);
+      });
+  }));
+};
+
+/**
+ * @private
+ */
+epiviz.EpiViz.prototype._registerHierarchyChartRequestAddFeature = function() {
+  var self = this;
+  self._chartManager._heatmapAddFeatureChartEvent.addListener(new epiviz.events.EventListener(function(e) {
+    var currentFeaturePlot = null, currentFeatureChartId = null;
+    for (var chartId in self._chartManager._charts) {
+      if (!self._chartManager._charts.hasOwnProperty(chartId)) { continue; }
+      if (self._chartManager._charts[chartId]._featureType == "featureScatterPlot") { 
+        currentFeaturePlot = self._chartManager._charts[chartId]; 
+        currentFeatureChartId = chartId;
+        // icicleMeasuremens = self._chartManager._charts[chartId].measurements();
+      } 
+    }
+
+    if(currentFeaturePlot) {
+      var vals = currentFeaturePlot.customSettingsValues();
+      vals.featureId = e.featureId;
+      vals.featureName = e.featureName;
+      vals.rowLabel = e.rowLabel;
+      self._chartManager._chartFeatureGetDataEvent.notify({"chartId": currentFeatureChartId});
+    }
+    else {
+      var chartType = self._chartFactory._types["epiviz.plugins.charts.FeatureScatterPlot"];
+
+      var vconfig = new epiviz.ui.controls.VisConfigSelection(
+        e.measurements, // measurements
+        undefined, // datasource
+        undefined, // datasourceGroup
+        undefined, // dataprovider
+        undefined, // annotation
+        chartType.chartName(), // defaultChartType
+        chartType.minSelectedMeasurements());
+
+      var chartProperties = new epiviz.ui.charts.VisualizationProperties(
+        chartType.defaultWidth(), // width
+        chartType.defaultHeight(), // height
+        chartType.defaultMargins(), // margins
+        vconfig, // configuration of measurements and other information selected by the user
+        chartType.defaultColors(), // colors
+        null, // modified methods
+        chartType.customSettingsValues(),
+        chartType.customSettingsDefs(),
+        []
+      );
+
+      chartProperties.customSettingsValues.featureId = e.featureId;
+      chartProperties.customSettingsValues.featureName = e.featureName;
+      chartProperties.customSettingsValues.rowLabel = e.rowLabel;
+
+      self._addChart(chartType, vconfig, undefined, chartProperties, "");
+    }
   }));
 };
 
@@ -530,12 +686,58 @@ epiviz.EpiViz.prototype._registerChartPropagateHierarchySelection = function() {
 /**
  * @private
  */
-epiviz.EpiViz.prototype._registerChartPropagateNavigationChanges = function() {
+epiviz.EpiViz.prototype._registerDataFailed = function() {
   var self = this;
-  this._chartManager.onChartPropagateNavigationChanges().addListener(new epiviz.events.EventListener(function(e) {
-    self._locationManager.changeCurrentLocation(e.range);
+  this._dataManager._requestDataFailed.addListener(new epiviz.events.EventListener(function(e) {
+
+    var iciclePlot, iciclePlotId;
+    for (var chartId in self._chartManager._charts) {
+        if (!self._chartManager._charts.hasOwnProperty(chartId)) { continue; }
+        if (self._chartManager._charts[chartId].displayType() == epiviz.ui.charts.VisualizationType.DisplayType.DATA_STRUCTURE) { 
+          iciclePlot = self._chartManager._charts[chartId]; 
+          iciclePlotId = chartId;
+          // icicleMeasuremens = self._chartManager._charts[chartId].measurements();
+        } 
+      }
+
+    var map = {};
+    map[iciclePlotId] = new epiviz.ui.controls.VisConfigSelection(undefined, undefined, 
+        iciclePlot.datasourceGroup(), iciclePlot.dataprovider(), undefined, undefined, undefined,
+        e);
+
+
+        var diffNode = _.omit(iciclePlot._selectedNodes, function(v,k) {return e.selection[k] == v;});
+        
+            iciclePlot.selectNode(iciclePlot._uiDataMap[Object.keys(diffNode)[0]]);
+            iciclePlot.selectNode(iciclePlot._uiDataMap[Object.keys(diffNode)[0]]);
+
+    iciclePlot._selectedNodes = e.selection;
+    iciclePlot._nodesOrder = e.order;
+    iciclePlot._selectedLevels = e.selectedLevels;
+
+    var dataProvider = self._dataManager._dataProviderFactory.get(iciclePlot.dataprovider()) || self._dataManager._dataProviderFactory.get(epiviz.data.EmptyResponseDataProvider.DEFAULT_ID);
+    
+    dataProvider._selectedLevels = dataProvider._lastSelectedLevels;
+    dataProvider._lastRoot = dataProvider._lastLastRoot;
+    dataProvider._selection = dataProvider._lastSelection;
+    dataProvider._order = dataProvider._lastOrder;
+
+    iciclePlot._svg.select('.items').empty();
+
+    iciclePlot.draw();
+    // iciclePlot.firePropagateHierarchyChanges();
+
+    self._dataManager.propagateHierarchyChanges(map, function(chartId, data) {
+      self._chartManager.updateCharts(undefined, data, [chartId]);
+    });
+
+    
+    // self._dataManager.propagateHierarchyChanges(map, function(chartId, data) {
+    //   self._chartManager.updateCharts(undefined, data, [chartId]);
+    // });
   }));
 };
+
 
 /**
  * @private
@@ -582,25 +784,6 @@ epiviz.EpiViz.prototype._registerDataRemoveMeasurements = function() {
       try {
         self._measurementsManager.removeMeasurements(e.measurements);
         e.result.success = true;
-      } catch (error) {
-        e.result.success = false;
-        e.result.errorMessage = error.toString();
-      }
-    }));
-};
-
-/**
- * @private
- */
-epiviz.EpiViz.prototype._registerDataLoadMeasurements = function() {
-  var self = this;
-  this._dataManager.onRequestLoadMeasurements().addListener(new epiviz.events.EventListener(
-    /** @param {{measurements: epiviz.measurements.MeasurementSet, result: epiviz.events.EventResult}} e */
-    function(e) {
-      try {
-        var m = self._measurementsManager.getRemoteMeasurements();
-        e.result.success = true;
-        e.result.measurements = m;
       } catch (error) {
         e.result.success = false;
         e.result.errorMessage = error.toString();
@@ -835,6 +1018,16 @@ epiviz.EpiViz.prototype._registerDataRedraw = function() {
      * @param {{result: epiviz.events.EventResult}} e
      */
     function(e) {
+
+      self._chartManager.dataWaitStart(undefined,
+        /**
+         * @param {epiviz.ui.charts.Visualization} chart
+         * @returns {boolean}
+         */
+        function(chart) {
+          return chart.displayType() != epiviz.ui.charts.VisualizationType.DisplayType.DATA_STRUCTURE && chart.type != "Sunburst";
+        });
+
       try {
         var currentLocation = self._locationManager.currentLocation();
         self._locationManager.changeCurrentLocation(currentLocation);
@@ -958,7 +1151,7 @@ epiviz.EpiViz.prototype._registerLocationChanged = function() {
          * @returns {boolean}
          */
         function(chart) {
-          return chart.displayType() != epiviz.ui.charts.VisualizationType.DisplayType.DATA_STRUCTURE;
+          return chart.displayType() != epiviz.ui.charts.VisualizationType.DisplayType.DATA_STRUCTURE && chart.type != "Sunburst";
         });
 
       /** @type {Object.<string, epiviz.measurements.MeasurementSet>} */
@@ -967,7 +1160,42 @@ epiviz.EpiViz.prototype._registerLocationChanged = function() {
       // TODO: update pca plots for Hierarchy Changes
       // remove PCA & alphadiversity here
       for ( var mea in chartMeasurementsMap) {
-          if (mea.indexOf('pca_scatter') != -1 || mea.indexOf('diversity_scatter') != -1) {
+
+          var cMap = {};
+          cMap[mea] = chartMeasurementsMap[mea];
+
+          if (mea.indexOf('pca_scatter') != -1) {
+
+            self._dataManager.getPCA(e.newValue, cMap,
+              function(chartId, data) {
+                self._chartManager.updateCharts(e.newValue, data, [chartId]);
+            });
+
+            delete chartMeasurementsMap[mea];
+          }
+          else if (mea.indexOf('pcoa_scatter') != -1) {
+
+            self._dataManager.getPCoA(e.newValue, cMap,
+              function(chartId, data) {
+                self._chartManager.updateCharts(e.newValue, data, [chartId]);
+            });
+
+            delete chartMeasurementsMap[mea];
+          }
+          else if (mea.indexOf('diversity_scatter') != -1) {
+            self._dataManager.getDiversity(e.newValue, cMap,
+              function(chartId, data) {
+                self._chartManager.updateCharts(e.newValue, data, [chartId]);
+            });
+
+            delete chartMeasurementsMap[mea];
+          }
+          else if(mea.indexOf('feature_scatter') != -1) {
+            // // self._dataManager.getFeatureData(e.newValue, cMap,
+            //   function(chartId, data) {
+            //     self._chartManager.updateCharts(e.newValue, data, [chartId]);
+            // });
+
             delete chartMeasurementsMap[mea];
           }
       } 
@@ -975,10 +1203,10 @@ epiviz.EpiViz.prototype._registerLocationChanged = function() {
       self._dataManager.getData(e.newValue, chartMeasurementsMap,
         function(chartId, data) {
           self._chartManager.updateCharts(e.newValue, data, [chartId]);
-        });
+      });
 
       if(!self._chartManager.onChartPropogateIcicleLocationChanges().isFiring()) {
-          self._chartManager.onChartIcicleLocationChanges().notify();
+          self._chartManager.onChartIcicleLocationChanges().notify(new epiviz.ui.charts.VisEventArgs('1', {start: e.newValue._start, width: e.newValue._width}));
         }
     }));
 };
@@ -988,8 +1216,6 @@ epiviz.EpiViz.prototype._registerChartPropogateIcicleLocationChange = function()
 
   self._chartManager.onChartPropogateIcicleLocationChanges().addListener(new epiviz.events.EventListener(
     function(e) {
-
-      //console.log(e);
       var currentLocation = self._locationManager.currentLocation();
       if(currentLocation != null) {
         self._locationManager.changeCurrentLocation(
@@ -1001,27 +1227,41 @@ epiviz.EpiViz.prototype._registerChartPropogateIcicleLocationChange = function()
   ));
 };
 
+// loading current data set for app screen
+epiviz.EpiViz.prototype._registerLoadingAppScreen = function() {
+  var self = this;
+
+  self._dataManager._loadingCurrentDataSet.addListener(new epiviz.events.EventListener(
+    function(e) {
+      self._controlManager.updateLoadingScreen(e);
+    }
+  ));
+};
+
 /**
  * @private
  */
-epiviz.EpiViz.prototype._registerDataUiStatus = function() {
+epiviz.EpiViz.prototype._registerUISplinesSettings = function() {
   var self = this;
-  this._dataManager.onRequestUiStatus().addListener(new epiviz.events.EventListener(
-      /**
-       * @param {{id: string, settings: Array, result: epiviz.events.EventResult}} e
-       */
+  this._controlManager._splinesSettings.addListener(new epiviz.events.EventListener(
+    function(e) {
+        self._dataManager.updateSplines(e.splines);
+      }
+    ));
+
+    self._chartManager._chartSplineSettingsChanged.addListener(new epiviz.events.EventListener(
       function(e) {
 
-        if(self._workspaceManager._activeWorkspace == null) {
-            self._workspaceManager.onActiveWorkspaceChanged().addListener(new epiviz.events.EventListener(
-              function(e1) {
-                e.result.success = true;
-            })
-          );
+          self._chartManager.dataWaitStart(undefined,
+          /**
+           * @param {epiviz.ui.charts.Visualization} chart
+           * @returns {boolean}
+           */
+          function(chart) {
+            return true;
+          });
+          
+          self._dataManager.updateSplines(e.splines);
         }
-        else {
-                e.result.success = true;
-        }
-      })
-  );
+      ));
 };

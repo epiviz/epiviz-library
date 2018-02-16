@@ -9,6 +9,8 @@ goog.provide('epiviz.Config');
 goog.require('epiviz.ui.WebArgsManager');
 goog.require('epiviz.data.WebsocketDataProvider');
 goog.require('epiviz.data.WebServerDataProvider');
+goog.require('epiviz.data.EpivizApiDataProvider');
+
 
 /**
  * @param {*} [settingsMap] A map of settings to override the default settings for the config.
@@ -95,12 +97,17 @@ epiviz.Config = function(settingsMap) {
   /**
    * @type {boolean}
    */
-  this.useCache = true;
+  this.useCache = false;
 
   /**
    * @type {string}
    */
-  this.useCookie = null;
+  this.useCookie = false;
+
+  /**
+   * @type {string}
+   */
+  this.appTitle = null;
 
   /**
    * The time interval used by the cache to clear away unneeded loaded data

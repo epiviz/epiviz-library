@@ -19,23 +19,17 @@ goog.require('epiviz.ui.charts.VisObject');
  * @param {Array.<Array.<epiviz.datatypes.GenomicData.ValueItem>>} [valueItems] For each measurement, an array of value items
  * @param {Array.<epiviz.measurements.Measurement>} [measurements]
  * @param {string} [cssClasses]
- * @param {string} seqName
  * @constructor
  * @struct
  * @extends {epiviz.ui.charts.VisObject}
  */
-epiviz.ui.charts.ChartObject = function(id, start, end, values, seriesIndex, valueItems, measurements, cssClasses, seqName) {
+epiviz.ui.charts.ChartObject = function(id, start, end, values, seriesIndex, valueItems, measurements, cssClasses) {
   epiviz.ui.charts.VisObject.call(this);
 
   /**
    * @type {string}
    */
   this.id = id;
-
-  /**
-   * @type {string}
-   */
-  this.seqName = seqName;
 
   /**
    * @type {number}
@@ -91,11 +85,6 @@ epiviz.ui.charts.ChartObject.prototype.regionStart = function() { return this.st
 epiviz.ui.charts.ChartObject.prototype.regionEnd = function() { return this.end; };
 
 /**
- * @returns {string}
- */
-epiviz.ui.charts.ChartObject.prototype.regionSeqName = function() { return this.seqName; };
-
-/**
  * @param {number} i
  * @param {number} j
  * @param {string} metadataCol
@@ -116,10 +105,6 @@ epiviz.ui.charts.ChartObject.prototype.getMetadata = function(i, j, metadataCol)
  * @returns {number}
  */
 epiviz.ui.charts.ChartObject.prototype.getStart = function(i, j) { return this.valueItems[i][j].rowItem.start(); };
-
-epiviz.ui.charts.ChartObject.prototype.getSeqName = function(i, j) { return this.seqName | this.valueItems[i][j].rowItem.seqName() ; };
-
-
 
 /**
  * Measurement i, object j

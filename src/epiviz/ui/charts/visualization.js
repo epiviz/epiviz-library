@@ -680,9 +680,12 @@ epiviz.ui.charts.Visualization.prototype._drawAxes = function(
           return yLabels[i];
         }
       : function(y) {
-          var format = d3.format("s");
-          var rounded = Math.round(y * 1000) / 1000;
-          return format(rounded);
+          // var format = d3.format("s");
+          // var rounded = Math.round(y * 1000) / 1000;
+          // return format(rounded);
+          var format = d3.formatPrefix(y);
+          var val = format.scale == "m" ? y : format.scale(y) + format.symbol
+          return val
         };
 
     var yAxis = d3.svg
@@ -699,6 +702,21 @@ epiviz.ui.charts.Visualization.prototype._drawAxes = function(
       .call(yAxis);
   }
 };
+
+epiviz.ui.charts.Visualization.prototype.getDataMinMax = function(data) {
+  var dataMin = 100000, dataMax = -100000;
+  data.foreach(function(m, series) {
+    var featureValues = series._container.values(m);
+    var valData = featureValues._values;
+    var fMin = Math.min.apply(null, valData), fMax = Math.max.apply(null, valData);
+  
+    if (fMin < dataMin) { dataMin = fMin;} 
+    if (fMax > dataMax) { dataMax = fMax;}
+  });
+
+  return [dataMin, dataMax]
+};
+
 
 /**
  * @private

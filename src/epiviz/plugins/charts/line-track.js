@@ -82,28 +82,13 @@ epiviz.plugins.charts.LineTrack.prototype.drawCanvas = function(
     epiviz.ui.charts.Visualization.CustomSettings.Y_MAX
   ];
 
+  var dataRange = this.getDataMinMax(data);
   if (minY == CustomSetting.DEFAULT) {
-    minY = null;
-    this.measurements().foreach(function(m) {
-      if (m === null) {
-        return;
-      }
-      if (minY === null || m.minValue() < minY) {
-        minY = m.minValue();
-      }
-    });
+    minY = dataRange[0];
   }
 
   if (maxY == CustomSetting.DEFAULT) {
-    maxY = null;
-    this.measurements().foreach(function(m) {
-      if (m === null) {
-        return;
-      }
-      if (maxY === null || m.maxValue() > maxY) {
-        maxY = m.maxValue();
-      }
-    });
+    maxY = dataRange[1];
   }
 
   if (minY === null && maxY === null) {
@@ -217,7 +202,8 @@ epiviz.plugins.charts.LineTrack.prototype.draw = function(
   range,
   data,
   slide,
-  zoom
+  zoom,
+  mirror
 ) {
   epiviz.ui.charts.Track.prototype.draw.call(this, range, data, slide, zoom);
 
@@ -244,28 +230,13 @@ epiviz.plugins.charts.LineTrack.prototype.draw = function(
     epiviz.ui.charts.Visualization.CustomSettings.Y_MAX
   ];
 
+  var dataRange = this.getDataMinMax(data);
   if (minY == CustomSetting.DEFAULT) {
-    minY = null;
-    this.measurements().foreach(function(m) {
-      if (m === null) {
-        return;
-      }
-      if (minY === null || m.minValue() < minY) {
-        minY = m.minValue();
-      }
-    });
+    minY = dataRange[0];
   }
 
   if (maxY == CustomSetting.DEFAULT) {
-    maxY = null;
-    this.measurements().foreach(function(m) {
-      if (m === null) {
-        return;
-      }
-      if (maxY === null || m.maxValue() > maxY) {
-        maxY = m.maxValue();
-      }
-    });
+    maxY = dataRange[1];
   }
 
   if (minY === null && maxY === null) {
@@ -290,7 +261,17 @@ epiviz.plugins.charts.LineTrack.prototype.draw = function(
     .range([this.height() - this.margins().sumAxis(Axis.Y), 0]);
 
   this._clearAxes();
-  this._drawAxes(xScale, yScale, 10, 5);
+
+  if(mirror) {
+    yScale = d3.scale
+    .linear()
+    .domain([-1 * maxY, maxY])
+    .range([this.height() - this.margins().sumAxis(Axis.Y), 0]);
+    this._drawAxes(xScale, yScale, 10, 5);
+  }
+  else {
+    this._drawAxes(xScale, yScale, 10, 5);
+  }
 
   var delta =
     (slide * (this.width() - this.margins().sumAxis(Axis.X))) / range.width();

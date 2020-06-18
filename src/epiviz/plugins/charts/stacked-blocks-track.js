@@ -19,7 +19,7 @@ goog.require("epiviz.ui.charts.Visualization");
  * @extends {epiviz.ui.charts.Track}
  * @constructor
  */
-epiviz.plugins.charts.StackedBlocksTrack = function(id, container, properties) {
+epiviz.plugins.charts.StackedBlocksTrack = function (id, container, properties) {
   // Call superclass constructor
   epiviz.ui.charts.Track.call(this, id, container, properties);
 
@@ -38,7 +38,7 @@ epiviz.plugins.charts.StackedBlocksTrack.constructor =
 /**
  * @protected
  */
-epiviz.plugins.charts.StackedBlocksTrack.prototype._initialize = function() {
+epiviz.plugins.charts.StackedBlocksTrack.prototype._initialize = function () {
   // Call super
   epiviz.ui.charts.Track.prototype._initialize.call(this);
 
@@ -52,7 +52,7 @@ epiviz.plugins.charts.StackedBlocksTrack.prototype._initialize = function() {
  * @param {number} [zoom]
  * @returns {Array.<epiviz.ui.charts.ChartObject>} The objects drawn
  */
-epiviz.plugins.charts.StackedBlocksTrack.prototype.draw = function(
+epiviz.plugins.charts.StackedBlocksTrack.prototype.draw = function (
   range,
   data,
   slide,
@@ -73,7 +73,7 @@ epiviz.plugins.charts.StackedBlocksTrack.prototype.draw = function(
   return this._drawBlocks(range, data, slide || 0, zoom || 1);
 };
 
-epiviz.plugins.charts.StackedBlocksTrack.prototype.drawCanvas = function(
+epiviz.plugins.charts.StackedBlocksTrack.prototype.drawCanvas = function (
   range,
   data,
   slide,
@@ -102,7 +102,7 @@ epiviz.plugins.charts.StackedBlocksTrack.prototype.drawCanvas = function(
  * @returns {Array.<epiviz.ui.charts.ChartObject>} The objects drawn
  * @private
  */
-epiviz.plugins.charts.StackedBlocksTrack.prototype._drawBlocks = function(
+epiviz.plugins.charts.StackedBlocksTrack.prototype._drawBlocks = function (
   range,
   data,
   slide,
@@ -144,14 +144,14 @@ epiviz.plugins.charts.StackedBlocksTrack.prototype._drawBlocks = function(
     epiviz.plugins.charts.StackedBlocksTrackType.CustomSettings.USE_COLOR_BY
   ];
 
-  var colorBy = function(row) {
-    if (data.measurements().length > 1) {
-      return colors.get(row.seriesIndex);
-    }
-
+  var colorBy = function (row) {
     return useColorBy
       ? colors.getByKey(row.values)
       : colors.get(row.seriesIndex);
+
+    // if (data.measurements().length > 1) {
+    //   return colors.get(row.seriesIndex);
+    // }
   };
 
   var xScale = d3.scale
@@ -169,7 +169,7 @@ epiviz.plugins.charts.StackedBlocksTrack.prototype._drawBlocks = function(
 
   var i = 0;
 
-  data.foreach(function(m, series, seriesIndex) {
+  data.foreach(function (m, series, seriesIndex) {
     var seriesBlocks = [];
 
     for (var j = 0; j < series.size(); ++j) {
@@ -191,7 +191,14 @@ epiviz.plugins.charts.StackedBlocksTrack.prototype._drawBlocks = function(
         var lastEnd = xScale(lastBlock.end);
 
         if (start - lastEnd < minBlockDistance) {
-          lastBlock.end = Math.max(lastBlock.end, cell.rowItem.end());
+          if (useColorBy) {
+            if (lastBlock.values == cell.rowItem.metadata(colorLabel)) {
+              lastBlock.end = Math.max(lastBlock.end, cell.rowItem.end());
+            }
+          }
+          else {
+            lastBlock.end = Math.max(lastBlock.end, cell.rowItem.end());
+          }
           lastBlock.valueItems[0].push(cell);
           lastBlock.id = sprintf(
             "b-%s-%s-%s",
@@ -224,6 +231,7 @@ epiviz.plugins.charts.StackedBlocksTrack.prototype._drawBlocks = function(
   var items = this._svg.select(".items");
   var selected = items.select(".selected");
   var clipPath = this._svg.select("#clip-" + this.id());
+  var textheight = 0; //13
 
   if (items.empty()) {
     if (clipPath.empty()) {
@@ -260,7 +268,7 @@ epiviz.plugins.charts.StackedBlocksTrack.prototype._drawBlocks = function(
 
   items.selectAll(".item").remove();
 
-  var selection = items.selectAll(".item").data(blocks, function(b) {
+  var selection = items.selectAll(".item").data(blocks, function (b) {
     return b.id;
   });
 
@@ -269,80 +277,80 @@ epiviz.plugins.charts.StackedBlocksTrack.prototype._drawBlocks = function(
   selection
     .enter()
     .insert("rect", ":first-child")
-    .attr("class", function(b) {
+    .attr("class", function (b) {
       return b.cssClasses;
     })
-    .style("fill", function(b) {
+    .style("fill", function (b) {
       return colorBy(b);
     })
-    .attr("x", function(b) {
+    .attr("x", function (b) {
       return xScale(b.start) / zoom + delta;
     })
-    .attr("y", function(b) {
-      return b.seriesIndex * seriesBlockHeight;
+    .attr("y", function (b) {
+      return (b.seriesIndex * seriesBlockHeight) + textheight;
     })
-    .attr("width", function(b) {
+    .attr("width", function (b) {
       // We're using b.end + 1 since b.end is the index of the last covered bp
       return zoom * (xScale(b.end + 1) - xScale(b.start));
     })
-    .attr("height", function(b) {
-      return seriesBlockHeight;
+    .attr("height", function (b) {
+      return seriesBlockHeight - textheight;
     })
-    .on("mouseout", function() {
+    .on("mouseout", function () {
       self._unhover.notify(new epiviz.ui.charts.VisEventArgs(self.id()));
     })
-    .on("mouseover", function(b) {
+    .on("mouseover", function (b) {
       self._hover.notify(new epiviz.ui.charts.VisEventArgs(self.id(), b));
     })
-    .on("click", function(b) {
+    .on("click", function (b) {
       self._deselect.notify(new epiviz.ui.charts.VisEventArgs(self.id()));
       self._select.notify(new epiviz.ui.charts.VisEventArgs(self.id(), b));
       d3.event.stopPropagation();
     });
 
   selection
-    .attr("class", function(b) {
+    .attr("class", function (b) {
       return b.cssClasses;
     })
     // .attr('height', height - margins.sumAxis(Axis.Y))
     // .attr('y', 0)
     .transition()
     .duration(500)
-    .attr("x", function(b) {
+    .attr("x", function (b) {
       return xScale(b.start);
     })
-    .attr("y", function(b) {
-      return b.seriesIndex * seriesBlockHeight;
+    .attr("y", function (b) {
+      return (b.seriesIndex * seriesBlockHeight) + textheight;
     })
-    .attr("width", function(b) {
+    .attr("width", function (b) {
       return xScale(b.end + 1) - xScale(b.start);
     })
-    .attr("height", function(b) {
-      return seriesBlockHeight;
+    .attr("height", function (b) {
+      return seriesBlockHeight - textheight;
     });
 
   selection
     .exit()
     .transition()
     .duration(500)
-    .attr("x", function(b) {
+    .attr("x", function (b) {
       return xScale(b.start);
     })
-    .attr("y", function(b) {
-      return b.seriesIndex * seriesBlockHeight;
+    .attr("y", function (b) {
+      return (b.seriesIndex * seriesBlockHeight) + textheight;
     })
-    .attr("width", function(b) {
+    .attr("width", function (b) {
       return xScale(b.end + 1) - xScale(b.start);
     })
-    .attr("height", function(b) {
-      return seriesBlockHeight;
+    .attr("height", function (b) {
+      return seriesBlockHeight - textheight;
     })
     .remove();
 
   return blocks;
 };
 
-epiviz.plugins.charts.StackedBlocksTrack.prototype._drawBlocksCanvas = function(
+epiviz.plugins.charts.StackedBlocksTrack.prototype._drawBlocksCanvas = function (
   range,
   data,
   slide,
@@ -384,7 +392,7 @@ epiviz.plugins.charts.StackedBlocksTrack.prototype._drawBlocksCanvas = function(
     epiviz.plugins.charts.StackedBlocksTrackType.CustomSettings.USE_COLOR_BY
   ];
 
-  var colorBy = function(row) {
+  var colorBy = function (row) {
     if (data.measurements().length > 1) {
       return colors.get(row.seriesIndex);
     }
@@ -427,8 +435,9 @@ epiviz.plugins.charts.StackedBlocksTrack.prototype._drawBlocksCanvas = function(
   var blocks = [];
 
   var i = 0;
+  var textheight = 7;
 
-  data.foreach(function(m, series, seriesIndex) {
+  data.foreach(function (m, series, seriesIndex) {
     var seriesBlocks = [];
 
     for (var j = 0; j < series.size(); ++j) {
@@ -450,7 +459,14 @@ epiviz.plugins.charts.StackedBlocksTrack.prototype._drawBlocksCanvas = function(
         var lastEnd = xScale(lastBlock.end);
 
         if (start - lastEnd < minBlockDistance) {
-          lastBlock.end = Math.max(lastBlock.end, cell.rowItem.end());
+          if (useColorBy) {
+            if (lastBlock.values == cell.rowItem.metadata(colorLabel)) {
+              lastBlock.end = Math.max(lastBlock.end, cell.rowItem.end());
+            }
+          }
+          else {
+            lastBlock.end = Math.max(lastBlock.end, cell.rowItem.end());
+          }
           lastBlock.valueItems[0].push(cell);
           lastBlock.id = sprintf(
             "b-%s-%s-%s",
@@ -519,7 +535,7 @@ epiviz.plugins.charts.StackedBlocksTrack.prototype._drawBlocksCanvas = function(
 
   items.selectAll(".item").remove();
 
-  var selection = items.selectAll(".item").data(blocks, function(b) {
+  var selection = items.selectAll(".item").data(blocks, function (b) {
     return b.id;
   });
 
@@ -532,7 +548,7 @@ epiviz.plugins.charts.StackedBlocksTrack.prototype._drawBlocksCanvas = function(
   var ctxh = hoverCanvas.getContext("2d");
   ctxh.translate(margins.left(), margins.top());
 
-  blocks.forEach(function(b) {
+  blocks.forEach(function (b) {
     ctx.beginPath();
 
     ctx.fillStyle = colorBy(b);
@@ -557,7 +573,7 @@ epiviz.plugins.charts.StackedBlocksTrack.prototype._drawBlocksCanvas = function(
 /**
  * @param {epiviz.ui.charts.ColorPalette} colors
  */
-epiviz.plugins.charts.StackedBlocksTrack.prototype.setColors = function(
+epiviz.plugins.charts.StackedBlocksTrack.prototype.setColors = function (
   colors
 ) {
   this.container()
